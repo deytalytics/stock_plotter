@@ -1,12 +1,8 @@
-import uuid
-
+from flask import Blueprint, request, session, render_template
+from app import oauth
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import yfinance as yf
-import secrets
-
-from flask import Blueprint, request, redirect, url_for, session
-from app import oauth
 
 routes = Blueprint('routes', __name__)
 
@@ -101,7 +97,6 @@ ftse_100_stocks = {
     'WPP plc': 'WPP.L'
 }
 
-
 stocks = ['AHT.L', 'JD.L', 'MRO.L', 'HLMA.L', 'LSEG.L']
 
 def get_stock_data(ticker, period):
@@ -150,21 +145,14 @@ def get_stocks_returns():
     )
     fig = go.Figure(data=plots, layout=layout)
     plot_div = pyo.plot(fig, output_type='div')
-    stock_dropdown = "<form method='post'><select name='stock'>"
-    for stock_name in ftse_100_stocks:
-        stock_dropdown += f"<option value='{ftse_100_stocks[stock_name]}'>{stock_name}</option>"
-    stock_dropdown += "</select>"
-    stock_dropdown += "<input type='submit' name='action' value='add'>"
-    stock_dropdown += f"<input type='submit' name='action' value='remove'>&nbsp;&nbsp;{session['user']['name']}<p></form>"
-    return f"{stock_dropdown}{plot_div}"
+    return render_template('stocks.html', user=session['user'], ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
 
 @routes.route('/login')
 def login():
     redirect_uri = "http://127.0.0.1:5050/authorize"
-    state = secrets.token_urlsafe(16)
-    session['state']=state
-    print(session['state'])
-    return oauth.google.authorize_redirect(redirect_uri,state=session['state'])
+    print("Session:", session.get('state', ''))
+    print(redirect_uri)
+    return oauth.google.authorize_redirect(redirect_uri, _external=True)
 
 @routes.route('/authorize')
 def authorize():

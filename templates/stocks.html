@@ -1,18 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Stock Returns Over Time</title>
+    <title>Stocks Information</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .user {
+            align-self: center;
+            margin-left: auto;
+        }
+        .plot {
+               height: 100%;
+               width: 80%;
+               }
+    </style>
 </head>
 <body>
-    <form method="post">
-        <select name="stock">
-            {% for stock_name in ftse_100_stocks %}
-                <option value="{{ ftse_100_stocks[stock_name] }}">{{ stock_name }}</option>
-            {% endfor %}
-        </select>
-        <input type="submit" name="action" value="add">
-        <input type="submit" name="action" value="remove">
+    <div class="d-flex">
+        <p>Select or Remove Stocks:</p>
+        <p class="user"><b>{{ user['name'] }}</b></p>
+    </div>
+    <form method="post" class="my-4">
+        <div class="d-flex">
+            <select name="stock" class="form-select me-2">
+                {% for stock, ticker in ftse_100_stocks.items() %}
+                    <option value="{{ ticker }}">{{ stock }}</option>
+                {% endfor %}
+            </select>
+            <div class="d-flex">
+                <input type="submit" name="action" value="add" class="btn btn-primary me-2">
+                <input type="submit" name="action" value="remove" class="btn btn-danger">
+            </div>
+        </div>
     </form>
-    {{ plot_div|safe }}
+    <div class = "plot">
+        {{ plot_div | safe }}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
