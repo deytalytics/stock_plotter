@@ -1,9 +1,11 @@
+import uuid
+
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import yfinance as yf
+import secrets
 
 from flask import Blueprint, request, redirect, url_for, session
-from flask_login import login_required
 from app import oauth
 
 routes = Blueprint('routes', __name__)
@@ -153,17 +155,24 @@ def get_stocks_returns():
         stock_dropdown += f"<option value='{ftse_100_stocks[stock_name]}'>{stock_name}</option>"
     stock_dropdown += "</select>"
     stock_dropdown += "<input type='submit' name='action' value='add'>"
-    stock_dropdown += "<input type='submit' name='action' value='remove'></form>"
+    stock_dropdown += f"<input type='submit' name='action' value='remove'>&nbsp;&nbsp;{session['user']['name']}<p></form>"
     return f"{stock_dropdown}{plot_div}"
 
 @routes.route('/login')
 def login():
-    redirect_uri = url_for('routes.authorize', _external=True)
-    print(redirect_uri)
-    return oauth.google.authorize_redirect(redirect_uri)
+    redirect_uri = "http://127.0.0.1:5050/authorize"
+    state = secrets.token_urlsafe(16)
+    session['state']=state
+    print(session['state'])
+    return oauth.google.authorize_redirect(redirect_uri,state=session['state'])
 
 @routes.route('/authorize')
 def authorize():
+    # Check that the state in the session matches the state parameter in the request
+    if request.args.get('state', '') != session.get('state', ''):
+        return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')} username:{session.get('username','')}"
+    else:
+        print(f"request:{request.args.get('state','')} session:{session.get('state','')} username:{session.get('username','')}")
     token = oauth.google.authorize_access_token()
     session['user'] = token['userinfo']
     return redirect('/')

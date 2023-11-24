@@ -1,6 +1,7 @@
 from flask import Flask
 from authlib.integrations.flask_client import OAuth
 from flask_login import LoginManager, login_user, current_user, login_required
+import os
 
 oauth = OAuth()
 login_manager = LoginManager()
@@ -8,7 +9,6 @@ login_manager = LoginManager()
 def create_app():
 
     app = Flask(__name__)
-    app.secret_key = 'd3talytics'
     app.config.from_object('config')
     CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
 
@@ -23,19 +23,13 @@ def create_app():
         }
     )
 
-    # Set the name of the login view.
-    # Flask-Login will redirect to this view if a protected page is accessed.
-    login_manager.login_view = 'routes.login'
-
-    # Initialize login_manager with the app
-    login_manager.init_app(app)
-
     from views import routes
     app.register_blueprint(routes)
 
     return app
 
 app = create_app()
+app.secret_key=os.getenv('SECRET_KEY')
 
 # User loader callback
 @login_manager.user_loader
