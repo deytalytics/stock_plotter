@@ -145,7 +145,7 @@ def get_stocks_returns():
     )
     fig = go.Figure(data=plots, layout=layout)
     plot_div = pyo.plot(fig, output_type='div')
-    return render_template('stocks.html', user=session['user'], ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
+    return render_template('stocks.html', ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
 
 @routes.route('/login')
 def login():
