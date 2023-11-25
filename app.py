@@ -1,6 +1,6 @@
 from flask import Flask, request, session, render_template, redirect
 from authlib.integrations.flask_client import OAuth
-import os
+import os, uuid
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import yfinance as yf
@@ -77,19 +77,22 @@ def get_stocks_returns():
     )
     fig = go.Figure(data=plots, layout=layout)
     plot_div = pyo.plot(fig, output_type='div')
-    return render_template('stocks.html', ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
+    user = session.get('user','')
+    return render_template('stocks.html', user = user['name'], ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
 
 @app.route('/login')
 def login():
     redirect_uri = f"{request.host_url}authorize"
-    state = session.get('state', '')
-    print(state)
-    print(redirect_uri)
+    state = str(uuid.uuid4())
+    session['state'] = state
+    print(redirect_uri, state)
     return oauth.google.authorize_redirect(redirect_uri, _external=True, state=state)
 
 @app.route('/authorize')
 def authorize():
     # Check that the state in the session matches the state parameter in the request
+    state = session.get('state','')
+    print(request.host_url, state)
     if request.args.get('state', '') != session.get('state', ''):
         return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')} username:{session.get('username','')}"
     else:
