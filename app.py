@@ -3,11 +3,12 @@ from authlib.integrations.flask_client import OAuth
 import os, uuid
 import plotly.graph_objs as go
 import plotly.offline as pyo
-import yfinance as yf
+import pandas as pd
 
 from stocks import stocks, ftse_100_stocks
 
-oauth = OAuth()
+from sqlalchemy import create_engine, text
+from datetime import datetime, timedelta
 
 def create_app():
 
@@ -28,47 +29,40 @@ def create_app():
 
     return app
 
-app = create_app()
-app.secret_key=os.getenv('SECRET_KEY')
+#Load the 1 year, 2 year, 5 year and 10 year percentage increases for a specific stock
+def load_stock_data(stock):
+    # Create a connection to your PostgreSQL database
+    username = os.getenv('USER')
+    password = os.getenv('PWD')
+    engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
 
-def get_stock_data(ticker, period):
-    stock = yf.Ticker(ticker)
-    return stock.history(period=period)
+    stock_returns = []
+    for period, days in time_periods.items():
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+        # Execute the SQL query and fetch the data
+        query = f"SELECT * FROM stock_price_history WHERE stock_symbol = '{stock}' AND Reported_date >= '{start_date}' AND Reported_date <= '{end_date}'"
+        stock_data = pd.read_sql_query(query, engine)
+        if len(stock_data) > 0:  # Check if data is available
+            percentage_return = round(
+                (stock_data['Close'].iloc[-1] - stock_data['Open'].iloc[0]) / stock_data['Open'].iloc[0] * 100, 2)
+            stock_returns.append(percentage_return)
+        else:
+            stock_return.append(None)
+    engine.dispose()
+    return stock_returns
 
-@app.route('/',methods=['GET','POST'])
-def get_stocks_returns():
-    if request.method == 'POST':
-        action = request.form['action']
-        selected_stock = request.form['stock']
-        if action == 'add':
-            if selected_stock in ftse_100_stocks.values() and selected_stock not in stocks:
-                stocks.append(selected_stock)
-            elif selected_stock not in ftse_100_stocks.values():
-                return "<script>alert('The selected stock is not in the FTSE 100 list. Please select a valid stock.')</script>"
-            else:
-                return "<script>alert('The selected stock is already in the list. Please select a different stock.')</script>"
-        elif action == 'remove':
-            if selected_stock in stocks:
-                stocks.remove(selected_stock)
-            else:
-                return "<script>alert('The selected stock is not in the current list. Please select a different stock to remove.')</script>"
-    time_periods = ["1y", "2y", "5y", "10y"]
-    returns = {}
-    for stock in stocks:
-        stock_returns = []
-        for period in time_periods:
-            stock_data = get_stock_data(stock, period)
-            if len(stock_data) > 0:  # Check if data is available
-                percentage_return = round((stock_data['Close'].iloc[-1] - stock_data['Open'].iloc[0]) / stock_data['Open'].iloc[0] * 100, 2)
-                stock_returns.append(percentage_return)
-            else:
-                stock_returns.append(None)
-        returns[stock] = stock_returns
+
+
+#Create the plot for all of the stocks in the stock portfolio
+def load_plots(returns):
     plots = []
     for stock, ret in returns.items():
-      hover_text = [f"{next((key for key, value in ftse_100_stocks.items() if value == stock), 'Unknown')}, {time_periods[i]}, {ret[i]}%" for i in range(len(time_periods))]
-      trace = go.Scatter(x=time_periods, y=ret, mode='lines+markers', name=stock, hoverinfo='text', text=hover_text)
-      plots.append(trace)
+        hover_text = [
+            f"{next((key for key, value in ftse_100_stocks.items() if value == stock), 'Unknown')}, {period}, {r}%" for
+            period, r in zip(time_periods, ret)]
+        trace = go.Scatter(x=list(time_periods.keys()), y=ret, mode='lines+markers', name=stock, hoverinfo='text', text=hover_text)
+        plots.append(trace)
 
     layout = go.Layout(
         title='Stock Returns Over Time',
@@ -77,7 +71,47 @@ def get_stocks_returns():
     )
     fig = go.Figure(data=plots, layout=layout)
     plot_div = pyo.plot(fig, output_type='div')
+    return plot_div
+
+
+oauth = OAuth()
+
+app = create_app()
+app.secret_key=os.getenv('SECRET_KEY')
+
+all_stock_data = {}
+time_periods = {"1y": 365, "2y": 365*2, "5y": 365*5, "10y": 365*10}
+
+returns = {}
+
+for stock in stocks:
+    returns[stock] = load_stock_data(stock)
+
+
+@app.route('/',methods=['GET','POST'])
+def get_stocks_returns():
+    if request.method == 'POST':
+        action = request.form['action']
+        selected_stock = request.form['stock']
+        if action == 'add':
+            # Add the selected stock to the portfolio
+            if selected_stock in ftse_100_stocks.values() and selected_stock not in stocks:
+                stocks.append(selected_stock)
+                returns[selected_stock] = load_stock_data(selected_stock)
+            elif selected_stock not in ftse_100_stocks.values():
+                return "<script>alert('The selected stock is not in the FTSE 100 list. Please select a valid stock.')</script>"
+            else:
+                return "<script>alert('The selected stock is already in the list. Please select a different stock.')</script>"
+        elif action == 'remove':
+            #Remove the selected stock from the portfolio
+            if selected_stock in stocks:
+                stocks.remove(selected_stock)
+                del returns[selected_stock]
+            else:
+                return "<script>alert('The selected stock is not in the current list. Please select a different stock to remove.')</script>"
+
     user = session.get('user','')
+    plot_div = load_plots(returns)
     return render_template('stocks.html', user = user['name'], ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
 
 @app.route('/login')
