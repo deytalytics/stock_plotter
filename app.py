@@ -33,7 +33,7 @@ def create_app():
 def load_stock_data(stock):
     # Create a connection to your PostgreSQL database
     username = os.getenv('USER')
-    password = os.getenv('PWD')
+    password = os.getenv('PASSWORD')
     engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
     print(engine, password)
 
