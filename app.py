@@ -35,6 +35,7 @@ def load_stock_data(stock):
     username = os.getenv('USER')
     password = os.getenv('PWD')
     engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
+    print(engine, password)
 
     stock_returns = []
     for period, days in time_periods.items():
