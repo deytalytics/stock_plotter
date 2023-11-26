@@ -131,12 +131,9 @@ def login():
 def authorize():
     # Check that the state in the session matches the state parameter in the request
     state = session.get('state','')
-    print(request.host_url, state)
     if request.args.get('state', '') != session.get('state', ''):
         return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')}"
     token = oauth.google.authorize_access_token()
     session['user'] = token['userinfo']
     return redirect('/')
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0")
