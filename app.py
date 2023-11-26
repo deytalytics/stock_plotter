@@ -35,7 +35,6 @@ def load_stock_data(stock):
     username = os.getenv('USER')
     password = os.getenv('PASSWORD')
     engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
-    print(engine, password)
 
     stock_returns = []
     for period, days in time_periods.items():
@@ -81,7 +80,7 @@ app = create_app()
 app.secret_key=os.getenv('SECRET_KEY')
 
 all_stock_data = {}
-time_periods = {"1y": 365, "2y": 365*2, "5y": 365*5, "10y": 365*10}
+time_periods = {"1y": 365, "2y": 365*2, "3y": 365*3, "4y":365*4, "5y": 365*5, "6y": 365*6, "7y":365*7, "8y":365*8, "9y":365*9, "10y": 365*10}
 
 returns = {}
 
@@ -116,7 +115,6 @@ def get_stocks_returns():
         username=user['name']
     else:
         username = 'Not Found'
-    print(username)
     plot_div = load_plots(returns)
     return render_template('stocks.html', user = username, ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
 
@@ -125,7 +123,6 @@ def login():
     redirect_uri = f"{request.host_url}authorize"
     state = str(uuid.uuid4())
     session['state'] = state
-    print(redirect_uri, state)
     return oauth.google.authorize_redirect(redirect_uri, _external=True, state=state)
 
 @app.route('/authorize')
