@@ -19,11 +19,11 @@ def create_app():
     # Initialize oauth with the app
     oauth.init_app(app)
 
-    oauth.register(
+    google = oauth.register(
         name='google',
         server_metadata_url=CONF_URL,
         client_kwargs={
-            'scope': 'openid email profile'
+            'scope': 'email openid profile'
         }
     )
 
@@ -111,8 +111,13 @@ def get_stocks_returns():
                 return "<script>alert('The selected stock is not in the current list. Please select a different stock to remove.')</script>"
 
     user = session.get('user','')
+    if 'name' in user:
+        username=user['name']
+    else:
+        username = 'Not Found'
+    print(username)
     plot_div = load_plots(returns)
-    return render_template('stocks.html', user = user['name'], ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
+    return render_template('stocks.html', user = username, ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
 
 @app.route('/login')
 def login():
@@ -128,12 +133,10 @@ def authorize():
     state = session.get('state','')
     print(request.host_url, state)
     if request.args.get('state', '') != session.get('state', ''):
-        return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')} username:{session.get('username','')}"
-    else:
-        print(f"request:{request.args.get('state','')} session:{session.get('state','')} username:{session.get('username','')}")
+        return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')}"
     token = oauth.google.authorize_access_token()
     session['user'] = token['userinfo']
     return redirect('/')
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0")
