@@ -7,7 +7,7 @@ import pandas as pd
 
 from stocks import stocks, ftse_100_stocks
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from datetime import datetime, timedelta
 
 def create_app():
@@ -48,7 +48,7 @@ def load_stock_data(stock):
                 (stock_data['Close'].iloc[-1] - stock_data['Open'].iloc[0]) / stock_data['Open'].iloc[0] * 100, 2)
             stock_returns.append(percentage_return)
         else:
-            stock_return.append(None)
+            stock_returns.append(None)
     engine.dispose()
     return stock_returns
 
