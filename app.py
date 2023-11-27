@@ -38,10 +38,12 @@ def load_stock_data(stock):
 
     stock_returns = []
     for period, days in time_periods.items():
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
         # Execute the SQL query and fetch the data
-        query = f"SELECT * FROM stock_price_history WHERE stock_symbol = '{stock}' AND Reported_date >= '{start_date}' AND Reported_date <= '{end_date}'"
+        query = f"""
+        SELECT * FROM stock_price_history WHERE stock_symbol = '{stock}' 
+        AND reported_date in (  select max(reported_date) FROM stock_price_history WHERE stock_symbol = '{stock}' 
+        union
+        select max(reported_date) - INTERVAL '{days} days' FROM stock_price_history WHERE stock_symbol = '{stock}')"""
         stock_data = pd.read_sql_query(query, engine)
         if len(stock_data) > 0:  # Check if data is available
             percentage_return = round(
@@ -73,6 +75,13 @@ def load_plots(returns):
     plot_div = pyo.plot(fig, output_type='div')
     return plot_div
 
+def get_username():
+    user = session.get('user','')
+    if 'name' in user:
+        username=user['name']+" <a href='/logout'>Logout</a>"
+    else:
+        username=f"<a href='/login'>Login</a>"
+    return username
 
 oauth = OAuth()
 
@@ -87,8 +96,12 @@ returns = {}
 for stock in stocks:
     returns[stock] = load_stock_data(stock)
 
+@app.route('/')
+def homepage():
+    username = get_username()
+    return render_template('index.html', user = username)
 
-@app.route('/',methods=['GET','POST'])
+@app.route('/plot',methods=['GET','POST'])
 def get_stocks_returns():
     if request.method == 'POST':
         action = request.form['action']
@@ -110,11 +123,7 @@ def get_stocks_returns():
             else:
                 return "<script>alert('The selected stock is not in the current list. Please select a different stock to remove.')</script>"
 
-    user = session.get('user','')
-    if 'name' in user:
-        username=user['name']
-    else:
-        username = 'Not Found'
+    username = get_username()
     plot_div = load_plots(returns)
     return render_template('stocks.html', user = username, ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
 
@@ -124,6 +133,13 @@ def login():
     state = str(uuid.uuid4())
     session['state'] = state
     return oauth.google.authorize_redirect(redirect_uri, _external=True, state=state)
+
+@app.route('/logout')
+def logout():
+    session['state'] = ''
+    session['user']=''
+    username = get_username()
+    return render_template('index.html', user=username)
 
 @app.route('/authorize')
 def authorize():
