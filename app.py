@@ -45,7 +45,7 @@ def load_stock_data(stock):
         stock_data = pd.read_sql_query(query, engine)
         if len(stock_data) > 0:  # Check if data is available
             percentage_return = round(
-                (stock_data['Close'].iloc[-1] - stock_data['Open'].iloc[0]) / stock_data['Open'].iloc[0] * 100, 2)
+                (stock_data['Close'].iloc[-1] - stock_data['Close'].iloc[0]) / stock_data['Close'].iloc[0] * 100, 2)
             stock_returns.append(percentage_return)
         else:
             stock_returns.append(None)
