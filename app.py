@@ -101,6 +101,11 @@ def homepage():
     username = get_username()
     return render_template('index.html', user = username)
 
+@app.route('/blog')
+def blog():
+    username = get_username()
+    return render_template('blog.html', user = username)
+
 @app.route('/plot',methods=['GET','POST'])
 def get_stocks_returns():
     if request.method == 'POST':
