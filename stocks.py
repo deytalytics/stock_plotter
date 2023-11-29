@@ -101,4 +101,4 @@ ftse_100_stocks = {
     'WPP Plc': 'WPP.L'
 }
 
-stocks = ['AHT.L', 'JD.L', 'MRO.L', 'HLMA.L', 'LSEG.L']
+stocks = ['AHT.L', 'JD.L', 'LSEG.L']

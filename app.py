@@ -35,15 +35,18 @@ def load_stock_data(stock):
     username = os.getenv('USER')
     password = os.getenv('PASSWORD')
     engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
-
     stock_returns = []
     for period, days in time_periods.items():
         # Execute the SQL query and fetch the data
         query = f"""
-        SELECT * FROM stock_price_history WHERE stock_symbol = '{stock}' 
-        AND reported_date in (  select max(reported_date) FROM stock_price_history WHERE stock_symbol = '{stock}' 
-        union
-        select max(reported_date) - INTERVAL '{days} days' FROM stock_price_history WHERE stock_symbol = '{stock}')"""
+SELECT * FROM stock_price_history
+WHERE stock_symbol = '{stock}'
+    AND (reported_date = (SELECT max(reported_date) FROM stock_price_history WHERE stock_symbol = '{stock}')
+         OR reported_date = (SELECT max(reported_date) FROM stock_price_history 
+                             WHERE stock_symbol = '{stock}' 
+                             AND reported_date <= (SELECT max(reported_date) FROM stock_price_history WHERE stock_symbol = '{stock}') - INTERVAL '{days} days'))
+ORDER BY reported_date
+LIMIT 2;"""
         stock_data = pd.read_sql_query(query, engine)
         if len(stock_data) > 0:  # Check if data is available
             percentage_return = round(
