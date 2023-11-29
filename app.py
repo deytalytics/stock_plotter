@@ -34,10 +34,14 @@ def save_portfolio(email):
     password = os.getenv('PASSWORD')
     engine = create_engine(f'postgresql://{username}:{password}@postgres-srvr.postgres.database.azure.com/data_product_metadata')
 
+    # Delete the existing rows for the given email address
+    delete_query = delete(user_stocks).where(user_stocks.c.email == email)
+    engine.execute(delete_query)
+    
     # Create and populate a dataframe
     df = pd.DataFrame({'email': [email] * len(stocks), 'stocks': stocks})
     # Store the data in PostgreSQL
-    df.to_sql('user_stocks', engine, if_exists='replace', index=False)
+    df.to_sql('user_stocks', engine, if_exists='append', index=False)
 
 
 #Load the 1 year, 2 year, 5 year and 10 year percentage increases for a specific stock
