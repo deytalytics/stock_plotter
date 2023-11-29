@@ -7,7 +7,7 @@ import pandas as pd
 
 from stocks import stocks, ftse_100_stocks
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, delete
 
 def create_app():
 
@@ -28,16 +28,34 @@ def create_app():
 
     return app
 
-def save_portfolio(email):
 
+from sqlalchemy import create_engine, text
+
+from sqlalchemy import create_engine, text
+
+
+def delete_portfolio(email):
     username = os.getenv('USER')
     password = os.getenv('PASSWORD')
-    engine = create_engine(f'postgresql://{username}:{password}@postgres-srvr.postgres.database.azure.com/data_product_metadata')
+    engine = create_engine(
+        f'postgresql://{username}:{password}@postgres-srvr.postgres.database.azure.com/data_product_metadata')
 
-    # Delete the existing rows for the given email address
-    delete_query = delete(user_stocks).where(user_stocks.c.email == email)
-    engine.execute(delete_query)
-    
+    # Establish a connection
+    with engine.connect() as connection:
+        # Start a new transaction
+        with connection.begin():
+            # Delete the existing rows for the given email address
+            delete_query = text(f"DELETE FROM user_stocks WHERE email = '{email}'")
+            connection.execute(delete_query)
+
+def save_portfolio(email):
+    username = os.getenv('USER')
+    password = os.getenv('PASSWORD')
+    engine = create_engine(
+        f'postgresql://{username}:{password}@postgres-srvr.postgres.database.azure.com/data_product_metadata')
+
+    delete_portfolio(email)
+
     # Create and populate a dataframe
     df = pd.DataFrame({'email': [email] * len(stocks), 'stocks': stocks})
     # Store the data in PostgreSQL
@@ -156,6 +174,9 @@ def get_stocks_returns():
         elif action == 'save':
             #Save the stock portfolio to the database
             save_portfolio(get_email())
+        elif action == 'delete':
+            #Delete all of the stocks from the portfolio belonging to the user's email
+            delete_portfolio(get_email())
 
 
     username = get_username()
