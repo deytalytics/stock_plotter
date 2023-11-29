@@ -7,7 +7,7 @@
 <body>
     {% include 'header.html' %}
     <br>
-    <p>&nbsp;Add or remove stocks to your portfolio</p>
+    <p> Add or remove stocks to your portfolio</p>
     <form method="post" class="my-4">
         <div class="d-flex">
             <select name="stock" class="form-select me-2">
@@ -24,6 +24,13 @@
     <div class = "plot">
         {{ plot_div | safe }}
     </div>
+    {% if user != "<a href='/login'>Login</a>" %}
+        <form method="post">
+            <input type="submit" name="action" value="save" class="btn btn-success">
+        </form>
+    {% else %}
+    Login to save your selected stocks to your portfolio
+    {% endif %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

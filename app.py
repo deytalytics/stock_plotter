@@ -1,6 +1,6 @@
 from flask import Flask, request, session, render_template, redirect
 from authlib.integrations.flask_client import OAuth
-import os, uuid
+import os, uuid, json
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import pandas as pd
@@ -8,7 +8,6 @@ import pandas as pd
 from stocks import stocks, ftse_100_stocks
 
 from sqlalchemy import create_engine
-from datetime import datetime, timedelta
 
 def create_app():
 
@@ -28,6 +27,19 @@ def create_app():
     )
 
     return app
+
+def save_portfolio(email):
+
+    username = os.getenv('USER')
+    password = os.getenv('PASSWORD')
+    engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
+
+    # Create and populate a dataframe
+    df = pd.DataFrame({'email': [email] * len(stocks), 'stocks': stocks})
+    print(df)
+    # Store the data in PostgreSQL
+    df.to_sql('user_stocks', engine, if_exists='replace', index=False)
+
 
 #Load the 1 year, 2 year, 5 year and 10 year percentage increases for a specific stock
 def load_stock_data(stock):
@@ -57,8 +69,6 @@ LIMIT 2;"""
     engine.dispose()
     return stock_returns
 
-
-
 #Create the plot for all of the stocks in the stock portfolio
 def load_plots(returns):
     plots = []
@@ -85,6 +95,14 @@ def get_username():
     else:
         username=f"<a href='/login'>Login</a>"
     return username
+
+def get_email():
+    user = session.get('user','')
+    if 'email' in user:
+        email=user['email']
+    else:
+        email = None
+    return email
 
 oauth = OAuth()
 
@@ -113,8 +131,9 @@ def blog():
 def get_stocks_returns():
     if request.method == 'POST':
         action = request.form['action']
-        selected_stock = request.form['stock']
         if action == 'add':
+            #Add the selected stock to the portfolio
+            selected_stock = request.form['stock']
             # Add the selected stock to the portfolio
             if selected_stock in ftse_100_stocks.values() and selected_stock not in stocks:
                 stocks.append(selected_stock)
@@ -125,11 +144,16 @@ def get_stocks_returns():
                 return "<script>alert('The selected stock is already in the list. Please select a different stock.')</script>"
         elif action == 'remove':
             #Remove the selected stock from the portfolio
+            selected_stock = request.form['stock']
             if selected_stock in stocks:
                 stocks.remove(selected_stock)
                 del returns[selected_stock]
             else:
                 return "<script>alert('The selected stock is not in the current list. Please select a different stock to remove.')</script>"
+        elif action == 'save':
+            #Save the stock portfolio to the database
+            save_portfolio(get_email())
+
 
     username = get_username()
     plot_div = load_plots(returns)

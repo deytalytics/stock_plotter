@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 
 # Create a connection to your PostgreSQL database
 username = os.getenv('USER')
-password = os.getenv('PWD')
+password = os.getenv('PASSWORD')
 engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
 
 # Create an empty DataFrame to store all the data
