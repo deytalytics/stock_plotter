@@ -148,6 +148,12 @@ def blog():
     username = get_username()
     return render_template('blog.html', user = username)
 
+@app.route('/legal')
+def legal():
+    username = get_username()
+    return render_template('legal.html', user = username)
+
+
 @app.route('/plot',methods=['GET','POST'])
 def get_stocks_returns():
     if request.method == 'POST':
