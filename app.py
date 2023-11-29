@@ -32,7 +32,7 @@ def save_portfolio(email):
 
     username = os.getenv('USER')
     password = os.getenv('PASSWORD')
-    engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
+    engine = create_engine(f'postgresql://{username}:{password}@postgres-srvr.postgres.database.azure.com/data_product_metadata')
 
     # Create and populate a dataframe
     df = pd.DataFrame({'email': [email] * len(stocks), 'stocks': stocks})
@@ -46,7 +46,7 @@ def load_stock_data(stock):
     # Create a connection to your PostgreSQL database
     username = os.getenv('USER')
     password = os.getenv('PASSWORD')
-    engine = create_engine(f'postgresql://{username}:{password}@flora.db.elephantsql.com/{username}')
+    engine = create_engine(f'postgresql://{username}:{password}@postgres-srvr.postgres.database.azure.com')
     stock_returns = []
     for period, days in time_periods.items():
         # Execute the SQL query and fetch the data
