@@ -1,4 +1,4 @@
-from flask import Flask, request, session, render_template, redirect
+from flask import Flask, request, session, render_template, redirect, url_for
 from authlib.integrations.flask_client import OAuth
 import os, uuid, json
 import plotly.graph_objs as go
@@ -194,6 +194,7 @@ def login():
     redirect_uri = f"{request.host_url}authorize"
     state = str(uuid.uuid4())
     session['state'] = state
+    session['referrer'] = request.referrer
     return oauth.google.authorize_redirect(redirect_uri, _external=True, state=state)
 
 @app.route('/logout')
@@ -201,7 +202,8 @@ def logout():
     session['state'] = ''
     session['user']=''
     username = get_username()
-    return render_template('index.html', user=username)
+    print (request.path, request.referrer)
+    return redirect(request.referrer)
 
 @app.route('/authorize')
 def authorize():
@@ -211,7 +213,8 @@ def authorize():
         return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')}"
     token = oauth.google.authorize_access_token()
     session['user'] = token['userinfo']
-    return redirect('/')
+    print(session['referrer'])
+    return redirect(session.get('referrer','/'))
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5050)
