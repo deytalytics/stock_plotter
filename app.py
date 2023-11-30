@@ -50,7 +50,7 @@ def save_user_stocks():
     # Create and populate a dataframe
     df = pd.DataFrame(user_stocks)
     # Store the user_stocks in the database
-    df.to_sql('user_stocks', engine, if_exists='append', index=False)
+    df.to_sql('user_stocks', engine, if_exists='replace', index=False)
 
 def load_all_user_stocks():
     #fetch user's stocks
