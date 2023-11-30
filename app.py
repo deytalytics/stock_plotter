@@ -46,8 +46,7 @@ def delete_user_stocks(email):
             delete_query = text(f"DELETE FROM user_stocks WHERE email = '{email}'")
             connection.execute(delete_query)
 
-def save_user_stocks(email):
-    delete_user_stocks(email)
+def save_user_stocks():
     # Create and populate a dataframe
     df = pd.DataFrame(user_stocks)
     # Store the user_stocks in the database
@@ -212,7 +211,7 @@ def get_stocks_returns():
                 user_stocks.remove((email, selected_stock))
         elif action == 'save':
             #Save the stock portfolio to the database
-            save_user_stocks(get_email())
+            save_user_stocks()
         elif action == 'delete':
             #Delete all of the stocks from the portfolio belonging to the user's email
             delete_user_stocks(get_email())
