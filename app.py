@@ -224,7 +224,7 @@ def get_stocks_returns():
         if stock[0]==email:
             returns[stock[1]] = load_stock_returns(stock[1], stock_price_history)
     plot_div = load_plots(returns)
-    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, plot_div=plot_div)
+    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, plot_div=plot_div, returns=returns)
 
 @app.route('/login')
 def login():
