@@ -6,6 +6,7 @@ import plotly.graph_objs as go
 import plotly.offline as pyo
 import pandas as pd
 from stocks import stocks, ftse_100_stocks
+from pop_postgres_stock_data import refresh_stocks
 
 def create_app():
 
@@ -176,6 +177,11 @@ stock_price_history = load_stock_price_history()
 def homepage():
     username = get_username()
     return render_template('index.html', user = username)
+
+@app.route('/refresh')
+def refresh():
+    engine = connect_db()
+    return refresh_stocks(engine)
 
 @app.route('/blog')
 def blog():
