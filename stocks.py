@@ -101,4 +101,15 @@ ftse_100_stocks = {
     'WPP Plc': 'WPP.L'
 }
 
+sp500_stocks = {
+    "Apple": "AAPL",
+    "Microsoft": "MSFT",
+    "Alphabet": "GOOGL",
+    "Amazon": "AMZN",
+    "Nvidia": "NVDA",
+    "Meta Platforms": "META",
+    "Tesla": "TSLA"
+}
+
+
 stocks = ['AHT.L', 'JD.L', 'LSEG.L']

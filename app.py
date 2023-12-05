@@ -5,7 +5,7 @@ import os, uuid, json
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import pandas as pd
-from stocks import stocks, ftse_100_stocks
+from stocks import stocks, ftse_100_stocks, sp500_stocks
 from pop_postgres_stock_data import refresh_stocks
 
 def create_app():
@@ -180,8 +180,11 @@ def homepage():
 
 @app.route('/refresh')
 def refresh():
+    global stock_price_history
     engine = connect_db()
-    return refresh_stocks(engine)
+    retmsg = refresh_stocks(engine)
+    stock_price_history = load_stock_price_history()
+    return retmsg
 
 @app.route('/blog')
 def blog():
@@ -229,7 +232,7 @@ def get_stocks_returns():
         if stock[0]==email:
             returns[stock[1]] = load_stock_returns(stock[1], stock_price_history)
     plot_div = load_plots(returns)
-    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, plot_div=plot_div, returns=returns)
+    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, returns=returns)
 
 @app.route('/login')
 def login():

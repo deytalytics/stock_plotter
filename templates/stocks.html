@@ -18,10 +18,12 @@
 <body>
     {% include 'header.html' %}
     <br>
-    <p> Add or remove stocks to your portfolio</p>
+    <p>Click on "S&P500" or "FTSE100" to select your stock market and then add or remove stocks to your portfolio</p>
     <form method="post" class="my-4">
         <div class="d-flex">
-            <select name="stock" class="form-select me-2">
+            <div id="sp500" class="me-2" style="cursor: pointer; color: blue;">S&P500</div>
+            <div id="ftse100" class="me-2" style="cursor: pointer; color: red;">FTSE100</div>
+            <select name="stock" id="stock-select" class="form-select me-2">
                 {% for stock, ticker in ftse_100_stocks.items() %}
                     <option value="{{ ticker }}">{{ stock }}</option>
                 {% endfor %}
@@ -65,5 +67,30 @@
             {% endfor %}
         </tbody>
     </table>
+    <script>
+        document.getElementById('sp500').addEventListener('click', function() {
+            let data = {{ sp500_stocks | safe }};
+            let select = document.getElementById('stock-select');
+            select.innerHTML = '';
+            for (let stock in data) {
+                let option = document.createElement('option');
+                option.value = data[stock];
+                option.text = stock;
+                select.add(option);
+            }
+        });
+
+        document.getElementById('ftse100').addEventListener('click', function() {
+            let data = {{ ftse_100_stocks | safe }};
+            let select = document.getElementById('stock-select');
+            select.innerHTML = '';
+            for (let stock in data) {
+                let option = document.createElement('option');
+                option.value = data[stock];
+                option.text = stock;
+                select.add(option);
+            }
+        });
+    </script>
 </body>
 </html>
