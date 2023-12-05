@@ -1,6 +1,6 @@
 import yfinance as yf
 import pandas as pd
-from stocks import ftse_100_stocks, sp500_stocks
+from stocks import ftse_100_stocks, sp500_stocks, dax_stocks
 
 def refresh_stocks(engine):
     try:
@@ -18,6 +18,7 @@ def refresh_stocks(engine):
 
             # Append the data to the all_data DataFrame
             all_data = pd.concat([all_data,data])
+            print(company)
 
         for company, symbol in sp500_stocks.items():
             # Download the stock data
@@ -30,6 +31,20 @@ def refresh_stocks(engine):
 
             # Append the data to the all_data DataFrame
             all_data = pd.concat([all_data,data])
+            print(company)
+
+        for company, symbol in dax_stocks.items():
+            # Download the stock data
+            data = yf.download(symbol, period='10y')
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date':'reported_date'})
+
+            # Append the data to the all_data DataFrame
+            all_data = pd.concat([all_data,data])
+            print(company)
 
         # Store the data in PostgreSQL
         all_data.to_sql('stock_price_history', engine, if_exists='replace', index=False)

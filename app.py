@@ -1,11 +1,11 @@
-from flask import Flask, request, session, render_template, redirect, url_for
+from flask import Flask, request, session, render_template, redirect
 from sqlalchemy import create_engine, text
 from authlib.integrations.flask_client import OAuth
-import os, uuid, json
+import os, uuid
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import pandas as pd
-from stocks import stocks, ftse_100_stocks, sp500_stocks
+from stocks import ftse_100_stocks, sp500_stocks, dax_stocks
 from pop_postgres_stock_data import refresh_stocks
 
 def create_app():
@@ -78,31 +78,6 @@ def load_stock_price_history():
 
     return stock_price_history
 
-
-#Load the 1 year, 2 year, 5 year and 10 year percentage increases for a specific stock
-def load_stock_returns_old(stock):
-    stock_returns = []
-    for period, days in time_periods.items():
-        # Execute the SQL query and fetch the data
-        query = f"""
-SELECT * FROM stock_price_history
-WHERE stock_symbol = '{stock}'
-    AND (reported_date = (SELECT max(reported_date) FROM stock_price_history WHERE stock_symbol = '{stock}')
-         OR reported_date = (SELECT max(reported_date) FROM stock_price_history 
-                             WHERE stock_symbol = '{stock}' 
-                             AND reported_date <= (SELECT max(reported_date) FROM stock_price_history WHERE stock_symbol = '{stock}') - INTERVAL '{days} days'))
-ORDER BY reported_date
-LIMIT 2;"""
-        stock_data = pd.read_sql_query(query, engine)
-        if len(stock_data) > 0:  # Check if data is available
-            percentage_return = round(
-                (stock_data['Close'].iloc[-1] - stock_data['Close'].iloc[0]) / stock_data['Close'].iloc[0] * 100, 2)
-            stock_returns.append(percentage_return)
-        else:
-            stock_returns.append(None)
-    return stock_returns
-
-
 def load_stock_returns(stock, stock_price_history):
     stock_returns = []
     for period, days in time_periods.items():
@@ -130,7 +105,7 @@ def load_plots(returns):
     plots = []
     for stock, ret in returns.items():
         hover_text = [
-            f"{next((key for key, value in {**ftse_100_stocks, **sp500_stocks}.items() if value == stock), 'Unknown')}, {period}, {r}%"
+            f"{next((key for key, value in {**ftse_100_stocks, **sp500_stocks, **dax_stocks}.items() if value == stock), 'Unknown')}, {period}, {r}%"
             for period, r in zip(time_periods, ret)
         ]
         trace = go.Scatter(x=list(time_periods.keys()), y=ret, mode='lines+markers', name=stock, hoverinfo='text', text=hover_text)
@@ -233,7 +208,7 @@ def get_stocks_returns():
         if stock[0]==email:
             returns[stock[1]] = load_stock_returns(stock[1], stock_price_history)
     plot_div = load_plots(returns)
-    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, returns=returns)
+    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, dax_stocks = dax_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, returns=returns)
 
 @app.route('/login')
 def login():
