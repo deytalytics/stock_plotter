@@ -1,8 +1,7 @@
 import yfinance as yf
 import pandas as pd
-from stocks import ftse_100_stocks, sp500_stocks, dax_stocks
 
-def refresh_stocks(engine):
+def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
     try:
         # Create an empty DataFrame to store all the data
         all_data = pd.DataFrame()
