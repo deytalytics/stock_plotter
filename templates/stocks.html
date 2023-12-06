@@ -26,10 +26,11 @@
             <div id="dax" class="me-2" style="cursor: pointer; color: #b59410">DAX</div>
             <select name="stock" id="stock-select" class="form-select me-2">
                 {% for stock, ticker in ftse_100_stocks.items() %}
-                    <option value="{{ ticker }}">{{ stock }}</option>
+                    <option value="{{ ticker }}" {% if ticker == selected_stock %}selected{% endif %}>{{ stock }}</option>
                 {% endfor %}
             </select>
             <div class="d-flex">
+                <input type="hidden" name="market" id="market-select" value="{{ selected_market }}">
                 <input type="submit" name="action" value="add" class="btn btn-primary me-2">
                 <input type="submit" name="action" value="remove" class="btn btn-danger">
             </div>
@@ -40,6 +41,8 @@
     </div>
     {% if user != "<a href='/login'>Login</a>" %}
         <form method="post">
+            <input type="hidden" name="market" id="market-select2" value="{{ selected_market }}">
+            <input type="hidden" name="stock" id="stock-select2">
             <input type="submit" name="action" value="save" class="btn btn-success">
             <input type="submit" name="action" value="delete" class="btn btn-danger">
         </form>
@@ -68,42 +71,66 @@
             {% endfor %}
         </tbody>
     </table>
+
     <script>
-        document.getElementById('sp500').addEventListener('click', function() {
-            let data = {{ sp500_stocks | safe }};
-            let select = document.getElementById('stock-select');
+        // Store the stocks in JavaScript variables
+        var ftse100Stocks = {{ ftse_100_stocks | tojson }};
+        var daxStocks = {{ dax_stocks | tojson }};
+        var sp500Stocks = {{ sp500_stocks | tojson }};
+
+        // Listen for click events on the market divs
+        document.querySelectorAll('#sp500, #ftse100, #dax').forEach(function(div) {
+            div.addEventListener('click', function(event) {
+                // Store the selected market in a JavaScript variable
+                var selectedMarket = event.target.id;
+                // Store the selected market in hidden form fields
+                document.querySelector('#market-select').value = selectedMarket;
+                document.querySelector('#market-select2').value = selectedMarket;
+                // Load the stocks for the selected market
+                selectedStock = null;
+                loadStocks(selectedMarket, selectedStock);
+            });
+        });
+
+        // Load the stocks for the selected market
+        function loadStocks(market, selectedStock) {
+            // Get the stocks for the selected market
+            var stocks;
+            if (market == 'sp500') {
+                stocks = sp500Stocks;
+                selectedStock = selectedStock || 'NVDA';
+            } else if (market == 'ftse100') {
+                stocks = ftse100Stocks;
+                selectedStock = (selectedStock && selectedStock !== 'NVDA') ? selectedStock : 'JD.L';
+            } else if (market == 'dax') {
+                stocks = daxStocks;
+                selectedStock = (selectedStock && selectedStock !== 'NVDA') ? selectedStock : 'DHL.DE';
+            }
+            // Update the options in the stock dropdown
+            var select = document.querySelector('#stock-select');
             select.innerHTML = '';
-            for (let stock in data) {
-                let option = document.createElement('option');
-                option.value = data[stock];
+            for (var stock in stocks) {
+                var option = document.createElement('option');
+                option.value = stocks[stock];
                 option.text = stock;
                 select.add(option);
             }
-        });
 
-        document.getElementById('ftse100').addEventListener('click', function() {
-            let data = {{ ftse_100_stocks | safe }};
-            let select = document.getElementById('stock-select');
-            select.innerHTML = '';
-            for (let stock in data) {
-                let option = document.createElement('option');
-                option.value = data[stock];
-                option.text = stock;
-                select.add(option);
-            }
-        });
+            // Set the selected (or default) Stock
+            select.value = selectedStock;
 
-        document.getElementById('dax').addEventListener('click', function() {
-            let data = {{ dax_stocks | safe }};
-            let select = document.getElementById('stock-select');
-            select.innerHTML = '';
-            for (let stock in data) {
-                let option = document.createElement('option');
-                option.value = data[stock];
-                option.text = stock;
-                select.add(option);
+            document.querySelector('#stock-select2').value = selectedStock;
+        }
+
+        // Call loadStocks when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+        var selectedStock = '{{ selected_stock }}'
+        var selectedMarket = document.querySelector('#market-select').value;
+         if (selectedMarket) {
+            loadStocks(selectedMarket, selectedStock);
             }
         });
     </script>
+
 </body>
 </html>

@@ -1,11 +1,11 @@
 from flask import Flask, request, session, render_template, redirect
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, Table, MetaData, select
+from sqlalchemy.orm import sessionmaker
 from authlib.integrations.flask_client import OAuth
-import os, uuid
+import os, uuid, json
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import pandas as pd
-from stocks import ftse_100_stocks, sp500_stocks, dax_stocks
 from pop_postgres_stock_data import refresh_stocks
 
 def create_app():
@@ -136,7 +136,32 @@ def get_email():
         email = None
     return email
 
-engine = None
+
+def load_market_stocks(engine):
+    metadata = MetaData()
+    market_stocks = Table('market_stocks', metadata, autoload_with=engine)
+
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    markets = ['FTSE 100', 'DAX', 'S&P 500']
+    jsons = {}
+
+    for market in markets:
+        sel = select(market_stocks).where(market_stocks.c.market == market)
+        result = session.execute(sel).fetchall()
+
+        data = {row[1]: row[2] for row in result}
+
+        jsons[market] = data
+
+    session.close()
+
+    return jsons['FTSE 100'], jsons['DAX'], jsons['S&P 500']
+
+#load the market stocks from the database
+engine = connect_db()
+ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
 
 oauth = OAuth()
 
@@ -177,19 +202,28 @@ def legal():
 def get_stocks_returns():
     returns={}
     global user_stocks
+    #Either use the selected stock market or default to sp500 if there isn't one
+    selected_market = request.form.get('market', 'sp500')
+    #For each selected_market choose default stocks
+    if selected_market == 'sp500':
+        default_stock = 'NVDA'
+    elif selected_market == 'ftse100':
+        default_stock = 'JD.L'
+    elif selected_market == 'dax':
+        default_stock = 'DHL.DE'
+    #Either use the selected stock or the default stock
+    selected_stock = request.form.get('stock', default_stock)
     if request.method == 'POST':
         email = get_email()
         action = request.form['action']
         if action == 'add':
-            selected_stock = request.form['stock']
             # Check if the selected stock already exists for the specified email
             if (email, selected_stock) not in user_stocks:
                 # If it doesn't exist, append it to the list and the database
                 user_stocks.append((email, selected_stock))
         elif action == 'remove':
             #Remove the selected stock from the portfolio
-            selected_stock = request.form['stock']
-            user_email = get_email()
+            email = get_email()
             # Check if the selected stock already exists for the specified email
             if (email, selected_stock) in user_stocks:
                 # If it exists then remove it from user_stocks
@@ -208,7 +242,7 @@ def get_stocks_returns():
         if stock[0]==email:
             returns[stock[1]] = load_stock_returns(stock[1], stock_price_history)
     plot_div = load_plots(returns)
-    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, dax_stocks = dax_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, returns=returns)
+    return render_template('stocks.html', user = get_username(), ftse_100_stocks=ftse_100_stocks, dax_stocks = dax_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, returns=returns)
 
 @app.route('/login')
 def login():
