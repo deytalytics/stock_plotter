@@ -18,7 +18,7 @@
             }
 
         th.sortable::after {
-            content: " ↓";
+            content: " ↑";
             color: black;
         }
         th.asc::after {
@@ -31,52 +31,52 @@
         }
     </style>
     <script>
-            /* JavaScript function to sort the table when a header is clicked */
-        function sortTable(n, initialSort = false) {
-            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-            table = document.getElementById("myTable");
-            switching = true;
-            dir = initialSort ? "desc" : "asc";
-            while (switching) {
-                switching = false;
-                rows = table.rows;
-                for (i = 1; i < (rows.length - 1); i++) {
-                    shouldSwitch = false;
-                    x = rows[i].getElementsByTagName("TD")[n];
-                    y = rows[i + 1].getElementsByTagName("TD")[n];
-                    if (dir == "asc") {
-                        if (Number(x.innerHTML) > Number(y.innerHTML)) {
-                            shouldSwitch = true;
-                            break;
-                        }
-                    } else if (dir == "desc") {
-                        if (Number(x.innerHTML) < Number(y.innerHTML)) {
-                            shouldSwitch = true;
-                            break;
-                        }
-                    }
-                }
-                if (shouldSwitch) {
-                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                    switching = true;
-                    switchcount++;
-                } else {
-                    if (switchcount == 0 && dir == "asc") {
-                        dir = "desc";
-                        switching = true;
-                    }
-                }
-            }
-            /* Update the direction of the sorting arrow */
-            for (i = 0; i < table.rows[0].cells.length; i++) {
-                table.rows[0].cells[i].classList.remove("asc", "desc");
-            }
+var lastSortedColumn = null;
+var lastSortedDirection = null;
+
+function sortTable(n, initialSort = false) {
+    var table, rows, switching, i, x, y, shouldSwitch;
+    var dir = initialSort ? "desc" : (lastSortedColumn === n && lastSortedDirection === "desc") ? "asc" : "desc";
+    table = document.getElementById("myTable");
+    switching = true;
+    while (switching) {
+        switching = false;
+        rows = table.rows;
+        for (i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n];
+            y = rows[i + 1].getElementsByTagName("TD")[n];
             if (dir == "asc") {
-                table.rows[0].cells[n].classList.add("asc");
-            } else {
-                table.rows[0].cells[n].classList.add("desc");
+                if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
+            } else if (dir == "desc") {
+                if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
             }
         }
+        if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+        }
+    }
+    /* Update the direction of the sorting arrow */
+    for (i = 0; i < table.rows[0].cells.length; i++) {
+        table.rows[0].cells[i].classList.remove("asc", "desc");
+    }
+    if (dir == "asc") {
+        table.rows[0].cells[n].classList.add("asc");
+    } else {
+        table.rows[0].cells[n].classList.add("desc");
+    }
+    lastSortedColumn = n;
+    lastSortedDirection = dir;
+}
+
+
     </script>
 </head>
 <body>
