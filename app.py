@@ -36,7 +36,7 @@ oauth = OAuth()
 app = create_app()
 app.secret_key=os.getenv('SECRET_KEY')
 
-time_periods = {"1y": 365, "2y": 365*2, "3y": 365*3, "4y":365*4, "5y": 365*5, "6y": 365*6, "7y":365*7, "8y":365*8, "9y":365*9, "10y": 365*10}
+time_periods = {f"{i}y": 365*i for i in range(1, 26)}
 
 returns={}
 user_stocks = load_all_user_stocks(engine)

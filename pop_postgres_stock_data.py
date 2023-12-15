@@ -8,7 +8,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
         for company, symbol in ftse_100_stocks.items():
             # Download the stock data
-            data = yf.download(symbol, period='10y')
+            data = yf.download(symbol, period='max')
             data = data.reset_index()
 
             # Add the stock symbol as a column
@@ -21,7 +21,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
         for company, symbol in sp500_stocks.items():
             # Download the stock data
-            data = yf.download(symbol, period='10y')
+            data = yf.download(symbol, period='max')
             data = data.reset_index()
 
             # Add the stock symbol as a column
@@ -34,7 +34,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
         for company, symbol in dax_stocks.items():
             # Download the stock data
-            data = yf.download(symbol, period='10y')
+            data = yf.download(symbol, period='max')
             data = data.reset_index()
 
             # Add the stock symbol as a column

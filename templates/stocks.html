@@ -29,6 +29,15 @@
             content: " ↓";
             color: red;
         }
+        .scrollable {
+        overflow-x: auto;
+        white-space: nowrap;
+        }
+        .fixed {
+        position: sticky;
+        left: 0;
+        background: white;
+        }
     </style>
     <script>
 var lastSortedColumn = null;
@@ -81,64 +90,68 @@ function sortTable(n, initialSort = false) {
 </head>
 <body>
     {% include 'header.html' %}
-    <br>
-    <p>Click on S&P500, DAX or FTSE100 to select your stock market and then add or remove stocks to your portfolio</p>
-    <form method="post" class="my-4">
-        <div class="d-flex">
-            <div id="sp500" class="me-2" style="cursor: pointer; color: blue;">S&P500</div>
-            <div id="ftse100" class="me-2" style="cursor: pointer; color: red;">FTSE100</div>
-            <div id="dax" class="me-2" style="cursor: pointer; color: #b59410">DAX</div>
-            <select name="stock" id="stock-select" class="form-select me-2">
-                {% for stock, ticker in ftse_100_stocks.items() %}
-                    <option value="{{ ticker }}" {% if ticker == selected_stock %}selected{% endif %}>{{ stock }}</option>
-                {% endfor %}
-            </select>
+    <div class="fixed">
+        <br>
+        <p>Click on S&P500, DAX or FTSE100 to select your stock market and then add or remove stocks to your portfolio</p>
+        <form method="post" class="my-4">
             <div class="d-flex">
-                <input type="hidden" name="market" id="market-select" value="{{ selected_market }}">
-                <input type="submit" name="action" value="add" class="btn btn-primary me-2">
-                <input type="submit" name="action" value="remove" class="btn btn-danger">
+                <div id="sp500" class="me-2" style="cursor: pointer; color: blue;">S&P500</div>
+                <div id="ftse100" class="me-2" style="cursor: pointer; color: red;">FTSE100</div>
+                <div id="dax" class="me-2" style="cursor: pointer; color: #b59410">DAX</div>
+                <select name="stock" id="stock-select" class="form-select me-2">
+                    {% for stock, ticker in ftse_100_stocks.items() %}
+                        <option value="{{ ticker }}" {% if ticker == selected_stock %}selected{% endif %}>{{ stock }}</option>
+                    {% endfor %}
+                </select>
+                <div class="d-flex">
+                    <input type="hidden" name="market" id="market-select" value="{{ selected_market }}">
+                    <input type="submit" name="action" value="add" class="btn btn-primary me-2">
+                    <input type="submit" name="action" value="remove" class="btn btn-danger">
+                </div>
             </div>
+        </form>
+        <div class = "plot">
+            {{ plot_div | safe }}
         </div>
-    </form>
-    <div class = "plot">
-        {{ plot_div | safe }}
+        {% if user != "<a href='/login'>Login</a>" %}
+            <form method="post">
+                <input type="hidden" name="market" id="market-select2" value="{{ selected_market }}">
+                <input type="hidden" name="stock" id="stock-select2" value ="{{ selected_stock }}">
+                <input type="submit" name="action" value="save" class="btn btn-success">
+                <input type="submit" name="action" value="delete" class="btn btn-danger">
+            </form>
+        {% else %}
+             <form method="post">
+                <input type="hidden" name="market" id="market-select2" value="{{ selected_market }}">
+                <input type="hidden" name="stock" id="stock-select2" value ="{{ selected_stock }}">
+            </form>
+        Login to save your selected stocks to your portfolio
+        {% endif %}
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+        <br>The table below shows the annual cumulative performance (in percentage terms) for the last 10 years for each selected stock. Click on hyperlink to view company fundamentals<br>
     </div>
-    {% if user != "<a href='/login'>Login</a>" %}
-        <form method="post">
-            <input type="hidden" name="market" id="market-select2" value="{{ selected_market }}">
-            <input type="hidden" name="stock" id="stock-select2" value ="{{ selected_stock }}">
-            <input type="submit" name="action" value="save" class="btn btn-success">
-            <input type="submit" name="action" value="delete" class="btn btn-danger">
-        </form>
-    {% else %}
-         <form method="post">
-            <input type="hidden" name="market" id="market-select2" value="{{ selected_market }}">
-            <input type="hidden" name="stock" id="stock-select2" value ="{{ selected_stock }}">
-        </form>
-    Login to save your selected stocks to your portfolio
-    {% endif %}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <br>The table below shows the annual cumulative performance (in percentage terms) for the last 10 years for each selected stock. Click on hyperlink to view company fundamentals<br>
-    <table id = "myTable">
-        <thead>
-            <tr>
-                <th>Stock Symbol</th>
-                {% for year in range(1,11) %}
-                    <th onclick="sortTable({{ loop.index }})" class="sortable">{{ year }}yr</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for stock, performance in returns.items() %}
+    <div class="scrollable">
+        <table id="myTable">
+            <thead>
                 <tr>
-                    <td><a href="https://uk.finance.yahoo.com/quote/{{ stock }}/key-statistics">{{ stock }}</a></td>
-                    {% for value in performance %}
-                        <td>{{ value | round | int }}</td>
+                    <th class="fixed">Stock Symbol</th>
+                    {% for year in range(1,26) %}
+                        <th onclick="sortTable({{ loop.index }})" class="sortable">{{ year }}yr</th>
                     {% endfor %}
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for stock, performance in returns.items() %}
+                    <tr>
+                        <td class="fixed"><a href="https://uk.finance.yahoo.com/quote/{{ stock }}/key-statistics">{{ stock }}</a></td>
+                        {% for value in performance %}
+                            <td>{{ value | round | int }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <script>
         // Store the stocks in JavaScript variables
