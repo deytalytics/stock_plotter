@@ -41,6 +41,7 @@ time_periods = {f"{i}y": 365*i for i in range(1, 26)}
 returns={}
 user_stocks = load_all_user_stocks(engine)
 stock_price_history = load_stock_price_history(engine)
+precalculated_returns = precalculate_returns(stock_price_history, time_periods)
 
 @app.route('/')
 def homepage():
@@ -49,10 +50,11 @@ def homepage():
 
 @app.route('/refresh')
 def refresh():
-    global stock_price_history
+    global stock_price_history, precalculated_returns
     engine = connect_db()
     retmsg = refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
     stock_price_history = load_stock_price_history(engine)
+    precalculated_returns = precalculate_returns(stock_price_history, time_periods)
     return retmsg
 
 @app.route('/blog')
@@ -108,8 +110,8 @@ def get_stocks_returns():
     email = get_email(session)
     for stock in user_stocks:
         if stock[0]==email:
-            returns[stock[1]] = load_stock_returns(stock[1], stock_price_history, time_periods)
-    plot_div = load_plots(returns, time_periods, ftse_100_stocks, sp500_stocks, dax_stocks)
+            returns[stock[1]] = precalculated_returns[stock[1]]
+            plot_div = load_plots(returns, time_periods, ftse_100_stocks, sp500_stocks, dax_stocks)
     return render_template('stocks.html', user = get_username(session), ftse_100_stocks=ftse_100_stocks, dax_stocks = dax_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, returns=returns)
 
 @app.route('/login')

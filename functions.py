@@ -51,27 +51,40 @@ def load_stock_price_history(engine):
 
     return stock_price_history
 
-def load_stock_returns(stock, stock_price_history, time_periods):
-    stock_returns = []
-    for period, days in time_periods.items():
+def precalculate_returns(stock_price_history, time_periods):
+    # Create a dictionary to store the pre-calculated returns for each stock
+    precalculated_returns = {}
+
+    # Loop over all unique stocks in the stock_price_history
+    for stock in stock_price_history['stock_symbol'].unique():
         # Filter the data for the specific stock
         stock_data = stock_price_history[stock_price_history['stock_symbol'] == stock]
 
         # Get the latest date for the stock
         max_date = stock_data['reported_date'].max()
 
-        # Get the data for the latest date and the date 'days' ago
-        stock_data = stock_data[(stock_data['reported_date'] == max_date) |
-                                (stock_data['reported_date'] <= max_date - pd.Timedelta(days=days))].sort_values(
-            'reported_date').tail(2)
+        # Create an array to store the returns for this stock
+        stock_returns = []
 
-        if len(stock_data) > 0:  # Check if data is available
-            percentage_return = round(
-                (stock_data['Close'].iloc[-1] - stock_data['Close'].iloc[0]) / stock_data['Close'].iloc[0] * 100, 2)
-            stock_returns.append(percentage_return)
-        else:
-            stock_returns.append(None)
-    return stock_returns
+        # Loop over all time periods
+        for period, days in time_periods.items():
+            # Get the data for the latest date and the date 'days' ago
+            period_data = stock_data[(stock_data['reported_date'] == max_date) |
+                                     (stock_data['reported_date'] <= max_date - pd.Timedelta(days=days))].sort_values(
+                'reported_date').tail(2)
+
+            if len(period_data) > 0:  # Check if data is available
+                percentage_return = round(
+                    (period_data['Close'].iloc[-1] - period_data['Close'].iloc[0]) / period_data['Close'].iloc[0] * 100,
+                    2)
+                stock_returns.append(percentage_return)
+            else:
+                stock_returns.append(None)
+
+        # Store the returns for this stock in the precalculated_returns dictionary
+        precalculated_returns[stock] = stock_returns
+
+    return precalculated_returns
 
 #Create the plot for all of the stocks in the stock portfolio
 def load_plots(returns, time_periods, ftse_100_stocks, sp500_stocks, dax_stocks):
