@@ -2,7 +2,8 @@ from sqlalchemy import create_engine, text, Table, MetaData, select
 from sqlalchemy.orm import sessionmaker
 import plotly.graph_objs as go
 import plotly.offline as pyo
-import pandas as pd, os
+import pandas as pd, os, datetime
+import yfinance as yf
 
 def connect_db():
     username = os.getenv('USER')
@@ -144,3 +145,112 @@ def load_market_stocks(engine):
     session.close()
 
     return jsons['FTSE 100'], jsons['DAX'], jsons['S&P 500']
+
+def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
+    try:
+        # Create an empty DataFrame to store all the data
+        all_data = pd.DataFrame()
+
+        for company, symbol in ftse_100_stocks.items():
+            # Download the stock data
+            data = yf.download(symbol, period='max')
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date':'reported_date'})
+
+            # Append the data to the all_data DataFrame
+            all_data = pd.concat([all_data,data])
+            print(company)
+
+        for company, symbol in sp500_stocks.items():
+            # Download the stock data
+            data = yf.download(symbol, period='max')
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date':'reported_date'})
+
+            # Append the data to the all_data DataFrame
+            all_data = pd.concat([all_data,data])
+            print(company)
+
+        for company, symbol in dax_stocks.items():
+            # Download the stock data
+            data = yf.download(symbol, period='max')
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date':'reported_date'})
+
+            # Append the data to the all_data DataFrame
+            all_data = pd.concat([all_data,data])
+            print(company)
+
+        # Store the data in PostgreSQL
+        all_data.to_sql('stock_price_history', engine, if_exists='replace', index=False, method='multi',chunksize=5000)
+        return "Stocks refreshed"
+    except Exception as e:
+        return e
+
+def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
+    try:
+        # Create an empty DataFrame to store all the data
+        all_data = pd.DataFrame()
+
+        # Get the date one week ago
+        one_week_ago = datetime.datetime.now() - datetime.timedelta(weeks=1)
+        delete_qry = f"DELETE FROM stock_price_history WHERE reported_date >= '{one_week_ago.date()}'"
+        # Delete the entries for the current day
+        with engine.begin() as connection:
+            print(delete_qry)
+            connection.execute(text(delete_qry))
+            print("deleted_stocks")
+
+        for company, symbol in ftse_100_stocks.items():
+            # Download the stock data for the last week
+            print(company)
+            data = yf.download(symbol, start=one_week_ago)
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date': 'reported_date'})
+
+            # Concatenate the new data
+            all_data = pd.concat([all_data, data])
+
+        for company, symbol in dax_stocks.items():
+            # Download the stock data for the last week
+            print(company)
+            data = yf.download(symbol, start=one_week_ago)
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date': 'reported_date'})
+
+            # Concatenate the new data
+            all_data = pd.concat([all_data, data])
+
+        for company, symbol in sp500_stocks.items():
+            # Download the stock data for the last week
+            print(company)
+            data = yf.download(symbol, start=one_week_ago)
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date': 'reported_date'})
+
+            # Concatenate the new data
+            all_data = pd.concat([all_data, data])
+
+        # Store the data in PostgreSQL
+        all_data.to_sql('stock_price_history', engine, if_exists='append', index=False, method='multi',chunksize=5000)
+        return "Stocks refreshed"
+    except Exception as e:
+        return e

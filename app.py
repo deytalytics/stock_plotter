@@ -1,7 +1,6 @@
 from flask import Flask, request, session, render_template, redirect
 from authlib.integrations.flask_client import OAuth
 import uuid
-from pop_postgres_stock_data import refresh_stocks
 from functions import *
 
 def create_app():
@@ -39,20 +38,32 @@ app.secret_key=os.getenv('SECRET_KEY')
 time_periods = {f"{i}y": 365*i for i in range(1, 26)}
 
 returns={}
+print("Loading stocks, price history and precalculated_returns")
 user_stocks = load_all_user_stocks(engine)
 stock_price_history = load_stock_price_history(engine)
 precalculated_returns = precalculate_returns(stock_price_history, time_periods)
-
+print("Stocks, price history and precalculated_returns all loaded")
 @app.route('/')
 def homepage():
     username = get_username(session)
     return render_template('index.html', user = username)
 
-@app.route('/refresh')
-def refresh():
+@app.route('/full_refresh')
+def full_refresh():
     global stock_price_history, precalculated_returns
     engine = connect_db()
+    ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
     retmsg = refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
+    stock_price_history = load_stock_price_history(engine)
+    precalculated_returns = precalculate_returns(stock_price_history, time_periods)
+    return retmsg
+
+@app.route('/daily_refresh')
+def daily_refresh():
+    global stock_price_history, precalculated_returns
+    engine = connect_db()
+    ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
+    retmsg = daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
     stock_price_history = load_stock_price_history(engine)
     precalculated_returns = precalculate_returns(stock_price_history, time_periods)
     return retmsg
