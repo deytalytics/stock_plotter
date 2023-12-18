@@ -138,7 +138,7 @@ def load_market_stocks(engine):
         sel = select(market_stocks).where(market_stocks.c.market == market)
         result = session.execute(sel).fetchall()
 
-        data = {row[1]: row[2] for row in result}
+        data = {row[2]: row[1] for row in result}
 
         jsons[market] = data
 

@@ -29,6 +29,7 @@ def create_app():
 #load the market stocks from the database
 engine = connect_db()
 ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
+print(sp500_stocks)
 
 oauth = OAuth()
 
