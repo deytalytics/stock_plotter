@@ -29,7 +29,6 @@ def create_app():
 #load the market stocks from the database
 engine = connect_db()
 ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
-print(sp500_stocks)
 
 oauth = OAuth()
 
@@ -48,6 +47,11 @@ print("Stocks, price history and precalculated_returns all loaded")
 def homepage():
     username = get_username(session)
     return render_template('index.html', user = username)
+
+@app.route('/chat')
+def chat():
+    username = get_username(session)
+    return render_template('chat.html', user = username)
 
 @app.route('/full_refresh')
 def full_refresh():
