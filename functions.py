@@ -151,7 +151,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
         # Create an empty DataFrame to store all the data
         all_data = pd.DataFrame()
 
-        for company, symbol in ftse_100_stocks.items():
+        for symbol, company in ftse_100_stocks.items():
             # Download the stock data
             data = yf.download(symbol, period='max')
             data = data.reset_index()
@@ -164,7 +164,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
             all_data = pd.concat([all_data,data])
             print(company)
 
-        for company, symbol in sp500_stocks.items():
+        for symbol, company in sp500_stocks.items():
             # Download the stock data
             data = yf.download(symbol, period='max')
             data = data.reset_index()
@@ -177,7 +177,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
             all_data = pd.concat([all_data,data])
             print(company)
 
-        for company, symbol in dax_stocks.items():
+        for symbol, company in dax_stocks.items():
             # Download the stock data
             data = yf.download(symbol, period='max')
             data = data.reset_index()
@@ -210,7 +210,7 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
             connection.execute(text(delete_qry))
             print("deleted_stocks")
 
-        for company, symbol in ftse_100_stocks.items():
+        for symbol, company in ftse_100_stocks.items():
             # Download the stock data for the last week
             print(company)
             data = yf.download(symbol, start=one_week_ago)
@@ -223,7 +223,7 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
             # Concatenate the new data
             all_data = pd.concat([all_data, data])
 
-        for company, symbol in dax_stocks.items():
+        for symbol, company in dax_stocks.items():
             # Download the stock data for the last week
             print(company)
             data = yf.download(symbol, start=one_week_ago)
@@ -236,7 +236,7 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
             # Concatenate the new data
             all_data = pd.concat([all_data, data])
 
-        for company, symbol in sp500_stocks.items():
+        for symbol, company in sp500_stocks.items():
             # Download the stock data for the last week
             print(company)
             data = yf.download(symbol, start=one_week_ago)
