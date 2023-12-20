@@ -1,7 +1,8 @@
-from flask import Flask, request, session, render_template, redirect
+from flask import Flask, request, session, render_template, redirect, make_response
 from authlib.integrations.flask_client import OAuth
-import uuid
+import uuid, re
 from functions import *
+from sqlalchemy.exc import ProgrammingError
 
 def create_app():
 
@@ -52,6 +53,36 @@ def homepage():
 def chat():
     username = get_username(session)
     return render_template('chat.html', user = username)
+
+@app.route('/sql')
+def sql():
+    username = get_username(session)
+    return render_template('sql.html', user = username)
+
+@app.route('/query', methods=['POST'])
+def query():
+    # Get the SQL query from the form
+    sql = request.form['sql']
+    username = get_username(session)
+
+    try:
+        # Execute the SQL query
+        df = pd.read_sql_query(sql, engine)
+
+        # Export the result to CSV or Excel format
+        if request.form.get('export') == 'csv':
+            response = make_response(df.to_csv(index=False))
+            response.headers['Content-Disposition'] = 'attachment; filename=result.csv'
+            response.headers['Content-Type'] = 'text/csv'
+            return response
+    except ProgrammingError as e:
+        error_message = str(e)
+        error_message = error_message.split("(Background on this error at:")[0]
+
+        # Remove the technical details from the error message
+        error_message = re.sub(r'\(psycopg2\.errors\.\w+\)', '', error_message)
+
+        return render_template('sql.html', user=username, error = error_message, sql=sql)
 
 @app.route('/full_refresh')
 def full_refresh():
