@@ -17,7 +17,7 @@
     <div class="row">
         <div class="col-md-12">
                 <br>
-                Write a standard SQL query and the resultset will be returned as a file (currently CSV only).<br><br>
+                Write a standard SQL query and the resultset will be returned as a file (currently HTML & CSV only).<br><br>
                 The tables that you can select from are:-<br><br>
                 <li><b>stock_price_history</b> - provides daily prices for FTSE100, DAX and the magnificent 7 companies. The stock_symbol follows yahoo finance ticker format</li><br>
                 <li><b>market_stocks</b> - provides the market (FTSE 100 | DAX | S&P 500), the stock_name and it's stock_symbol</li>
@@ -34,8 +34,9 @@
                 <textarea id="sql" name="sql" rows="10" cols="50">{{ sql|default('') }}</textarea><br>
                 <label for="export">Export format:</label>
                 <select id="export" name="export">
+                    <option value="html" selected>HTML</option>
                     <option value="csv">CSV</option>
-                </select><br>
+                </select>
                 <input type="submit" value="Submit">
             </form>
         </div>

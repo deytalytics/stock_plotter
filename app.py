@@ -69,12 +69,15 @@ def query():
         # Execute the SQL query
         df = pd.read_sql_query(sql, engine)
 
-        # Export the result to CSV or Excel format
-        if request.form.get('export') == 'csv':
+        # Export the result to CSV or HTML format
+        export_format = request.form.get('export')
+        if export_format == 'csv':
             response = make_response(df.to_csv(index=False))
             response.headers['Content-Disposition'] = 'attachment; filename=result.csv'
             response.headers['Content-Type'] = 'text/csv'
             return response
+        elif export_format == 'html':
+            return render_template('resultset.html',  table=df.to_html(classes='table table-bordered table-striped', header="true", index=False))
     except ProgrammingError as e:
         error_message = str(e)
         error_message = error_message.split("(Background on this error at:")[0]
