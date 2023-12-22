@@ -8,73 +8,77 @@
             var selectBox = document.getElementById('savedQueries');
             var selectedValue = selectBox.options[selectBox.selectedIndex].value;
             document.getElementById('sql').value = selectedValue;
+            var queryName = document.getElementById("savedQueries").value;
+            // Store the selected query name in session storage
+            sessionStorage.setItem('selectedQuery', queryName);
         }
-function saveQuery() {
-    var queryName = document.getElementById('queryName').value;
-    var sql = document.getElementById('sql').value;
 
-    // Check if queryName is blank
-    if (!queryName.trim()) {
-        alert('Query name cannot be blank.');
-        return;
-    }
+        function saveQuery() {
+            var queryName = document.getElementById('queryName').value;
+            var sql = document.getElementById('sql').value;
 
-    fetch('{{ url_for('save_query') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            name: queryName,
-            sql: sql
-        })
-    }).then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Query saved successfully!');
-            // Create a new option element
-            var newOption = document.createElement("option");
-            newOption.value = sql;
-            newOption.text = queryName;
-            // Append the new option to the select element
-            var select = document.getElementById("savedQueries");
-            select.appendChild(newOption);
-            select.value = sql;
-            // Trigger the onchange event
-            select.onchange();
-            // Store the selected query name in local storage
-            localStorage.setItem('selectedQuery', queryName);
-        } else {
-            alert('Failed to save query.');
+            // Check if queryName is blank
+            if (!queryName.trim()) {
+                alert('Query name cannot be blank.');
+                return;
+            }
+
+            fetch('{{ url_for('save_query') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: queryName,
+                    sql: sql
+                })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Query saved successfully!');
+                    // Create a new option element
+                    var newOption = document.createElement("option");
+                    newOption.value = sql;
+                    newOption.text = queryName;
+                    // Append the new option to the select element
+                    var select = document.getElementById("savedQueries");
+                    select.appendChild(newOption);
+                    select.value = sql;
+                    // Trigger the onchange event
+                    select.onchange();
+                    // Store the selected query name in session storage
+                    sessionStorage.setItem('selectedQuery', queryName);
+                } else {
+                    alert('Failed to save query.');
+                }
+            });
         }
-    });
-}
 
-function deleteQuery() {
-    var selectBox = document.getElementById('savedQueries');
-    var selectedValue = selectBox.options[selectBox.selectedIndex].value;
-    var selectedText = selectBox.options[selectBox.selectedIndex].text;
+        function deleteQuery() {
+            var selectBox = document.getElementById('savedQueries');
+            var selectedValue = selectBox.options[selectBox.selectedIndex].value;
+            var selectedText = selectBox.options[selectBox.selectedIndex].text;
 
-    fetch('{{ url_for('delete_query') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            name: selectedText,
-            sql: selectedValue
-        })
-    }).then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Query deleted successfully!');
-            // Remove the option from the select element
-            selectBox.remove(selectBox.selectedIndex);
-        } else {
-            alert('Failed to delete query.');
+            fetch('{{ url_for('delete_query') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: selectedText,
+                    sql: selectedValue
+                })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Query deleted successfully!');
+                    // Remove the option from the select element
+                    selectBox.remove(selectBox.selectedIndex);
+                } else {
+                    alert('Failed to delete query.');
+                }
+            });
         }
-    });
-}
 
 
     </script>
@@ -138,12 +142,13 @@ function deleteQuery() {
         };
 
         window.onload = function() {
-    var selectedQuery = localStorage.getItem('selectedQuery');
-    if (selectedQuery) {
-        var select = document.getElementById("savedQueries");
-        select.value = selectedQuery;
-    }
-};
+            var selectedQuery = sessionStorage.getItem('selectedQuery');
+            if (selectedQuery) {
+                var select = document.getElementById("savedQueries");
+                select.value = selectedQuery;
+                loadQuery();
+            }
+        };
     </script>
 </body>
 </html>
