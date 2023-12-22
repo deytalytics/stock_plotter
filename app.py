@@ -90,7 +90,7 @@ def query():
             response.headers['Content-Type'] = 'text/csv'
             return response
         elif export_format == 'html':
-            return render_template('resultset.html',  table=df.to_html(classes='table table-bordered table-striped', header="true", index=False))
+            return render_template('resultset.html',  table=df.to_html(classes='table table-bordered custom-table-striped', header="true", index=False))
     except ProgrammingError as e:
         error_message = str(e)
         error_message = error_message.split("(Background on this error at:")[0]
