@@ -1,8 +1,9 @@
-from flask import Flask, request, session, render_template, redirect, make_response
+from flask import Flask, request, session, render_template, redirect, make_response, jsonify, url_for
 from authlib.integrations.flask_client import OAuth
 import uuid, re
 from functions import *
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy import text, and_
 
 def create_app():
 
@@ -57,7 +58,19 @@ def chat():
 @app.route('/sql')
 def sql():
     username = get_username(session)
-    return render_template('sql.html', user = username)
+    email = get_email(session)
+    query = text(f"SELECT query_name, sql FROM user_queries WHERE email = '{email}'")
+    with engine.connect() as connection:
+        result = connection.execute(query)
+    error = session.get('error', None)
+    sql = session.get('sql', None)
+    # Clear the session data
+    session['error'] = None
+    session['sql'] = None
+    savedQueries = [row for row in result]
+
+    return render_template('sql.html', user=username, error = error, sql=sql, savedQueries=savedQueries)
+
 
 @app.route('/query', methods=['POST'])
 def query():
@@ -85,7 +98,54 @@ def query():
         # Remove the technical details from the error message
         error_message = re.sub(r'\(psycopg2\.errors\.\w+\)', '', error_message)
 
-        return render_template('sql.html', user=username, error = error_message, sql=sql)
+        session['error'] = error_message
+        session['sql'] = sql
+        return redirect(url_for('sql'))
+
+
+@app.route('/save_query', methods=['POST'])
+def save_query():
+    data = request.get_json()
+    query_name = data['name']
+    sql = data['sql']
+    email = get_email(session)
+
+    with engine.connect() as connection:
+        metadata = MetaData()
+        queries = Table('user_queries', metadata, autoload_with=engine)
+
+        # Check if the record exists
+        sel = select(queries).where(and_(queries.c.email == email, queries.c.query_name == query_name))
+
+        result = connection.execute(sel).fetchone()
+
+        # If the record exists, update it
+        if result:
+            upd = queries.update().where(queries.c.email == email, queries.c.query_name == query_name).values(sql=sql)
+            connection.execute(upd)
+        # If the record does not exist, insert a new one
+        else:
+            ins = queries.insert().values(email=email, query_name=query_name, sql=sql)
+            connection.execute(ins)
+
+        connection.commit()
+
+    return jsonify(success=True)
+
+@app.route('/delete_query', methods=['POST'])
+def delete_query():
+    data = request.get_json()
+    query_name = data['name']
+    email = get_email(session)
+
+    try:
+        with engine.connect() as connection:
+            del_stmt = text(f"DELETE FROM user_queries WHERE email = '{email}' AND query_name = '{query_name}'")
+            connection.execute(del_stmt)
+            connection.commit()
+            return jsonify(success=True)
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
 
 @app.route('/full_refresh')
 def full_refresh():
