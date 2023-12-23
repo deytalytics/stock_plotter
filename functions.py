@@ -18,14 +18,14 @@ def delete_user_stocks(email,engine):
         # Start a new transaction
         with connection.begin():
             # Delete the existing rows for the given email address
-            delete_query = text(f"DELETE FROM user_stocks WHERE email = '{email}'")
+            delete_query = text(f"DELETE FROM admin.user_stocks WHERE email = '{email}'")
             connection.execute(delete_query)
 
 def save_user_stocks(engine, user_stocks):
     # Create and populate a dataframe
     df = pd.DataFrame(user_stocks)
     # Store the user_stocks in the database
-    df.to_sql('user_stocks', engine, if_exists='replace', index=False)
+    df.to_sql('user_stocks', engine, if_exists='replace', index=False,schema='admin')
 
 def load_all_user_stocks(engine):
     #fetch user's stocks
