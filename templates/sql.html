@@ -11,11 +11,12 @@
             var queryName = document.getElementById("savedQueries").value;
             // Store the selected query name in session storage
             sessionStorage.setItem('selectedQuery', queryName);
+            document.getElementById("queryName").value = selectBox.options[selectBox.selectedIndex].text;
         }
 
         function saveQuery() {
-            var queryName = document.getElementById('queryName').value;
             var sql = document.getElementById('sql').value;
+            var queryName = document.getElementById('queryName').value;
 
             // Check if queryName is blank
             if (!queryName.trim()) {
@@ -47,7 +48,7 @@
                     // Trigger the onchange event
                     select.onchange();
                     // Store the selected query name in session storage
-                    sessionStorage.setItem('selectedQuery', queryName);
+                    sessionStorage.setItem('selectedQuery', select.value);
                 } else {
                     alert('Failed to save query.');
                 }
@@ -89,8 +90,8 @@
         <div class="col-md-12">
                 Write a standard SQL query and the resultset will be returned as a file (currently HTML & CSV only).<br><br>
                 The tables that you can select from are:-<br>
-                <li><b>stock_price_history</b> - provides prices('Open','High','Low','Close','Adj Close') and 'Volume' for FTSE100, DAX and the magnificent 7 'stock_name' for a 'reported_date'. The stock_symbol follows yahoo finance ticker format</li>
-                <li><b>market_stocks</b> - provides the market (FTSE 100 | DAX | S&P 500), the stock_name and it's stock_symbol</li>
+                <li><b>stockplot.stock_price_history</b> - provides prices('Open','High','Low','Close','Adj Close') and 'Volume' for FTSE100, DAX and the magnificent 7 'stock_name' for a 'reported_date'. The stock_symbol follows yahoo finance ticker format</li>
+                <li><b>stockplot.market_stocks</b> - provides the market (FTSE 100 | DAX | S&P 500), the stock_name and it's stock_symbol</li>
                 {% if error %}
                 <script>
                     var errorMessage = "{{ error|escape|replace('\n', ' ')|replace('\r', '') }}";

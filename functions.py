@@ -29,7 +29,7 @@ def save_user_stocks(engine, user_stocks):
 
 def load_all_user_stocks(engine):
     #fetch user's stocks
-    query = "select * from user_stocks"
+    query = "select * from admin.user_stocks"
 
     # Create a connection and execute the query
     with engine.connect() as connection:
@@ -42,7 +42,7 @@ def load_all_user_stocks(engine):
 
 def load_stock_price_history(engine):
     #fetch the stock_price_history from the database
-    query = "select * from stock_price_history"
+    query = "select * from stockplot.stock_price_history"
 
     # Use pandas to execute the query and load the data into a DataFrame
     stock_price_history = pd.read_sql_query(query, engine)
@@ -76,7 +76,7 @@ def precalculate_returns(stock_price_history, time_periods):
 
             if len(period_data) > 0:  # Check if data is available
                 percentage_return = round(
-                    (period_data['Close'].iloc[-1] - period_data['Close'].iloc[0]) / period_data['Close'].iloc[0] * 100,
+                    (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[0] * 100,
                     2)
                 stock_returns.append(percentage_return)
             else:
@@ -126,7 +126,7 @@ def get_email(session):
 
 def load_market_stocks(engine):
     metadata = MetaData()
-    market_stocks = Table('market_stocks', metadata, autoload_with=engine)
+    market_stocks = Table('market_stocks', metadata, autoload_with=engine, schema = 'stockplot')
 
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -158,7 +158,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
             # Add the stock symbol as a column
             data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date':'reported_date'})
+            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
 
             # Append the data to the all_data DataFrame
             all_data = pd.concat([all_data,data])
@@ -171,7 +171,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
             # Add the stock symbol as a column
             data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date':'reported_date'})
+            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
 
             # Append the data to the all_data DataFrame
             all_data = pd.concat([all_data,data])
@@ -184,14 +184,14 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
             # Add the stock symbol as a column
             data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date':'reported_date'})
+            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
 
             # Append the data to the all_data DataFrame
             all_data = pd.concat([all_data,data])
             print(company)
 
         # Store the data in PostgreSQL
-        all_data.to_sql('stock_price_history', engine, if_exists='replace', index=False, method='multi',chunksize=5000)
+        all_data.to_sql('stock_price_history', engine, 'replace', schema='stockplot', index=False, method='multi',chunksize=5000)
         return "Stocks refreshed"
     except Exception as e:
         return e
@@ -203,12 +203,10 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
         # Get the date one week ago
         one_week_ago = datetime.datetime.now() - datetime.timedelta(weeks=1)
-        delete_qry = f"DELETE FROM stock_price_history WHERE reported_date >= '{one_week_ago.date()}'"
+        delete_qry = f"DELETE FROM stockplot.stock_price_history WHERE reported_date >= '{one_week_ago.date()}'"
         # Delete the entries for the current day
         with engine.begin() as connection:
-            print(delete_qry)
             connection.execute(text(delete_qry))
-            print("deleted_stocks")
 
         for symbol, company in ftse_100_stocks.items():
             # Download the stock data for the last week
@@ -218,7 +216,7 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
             # Add the stock symbol as a column
             data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date'})
+            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
 
             # Concatenate the new data
             all_data = pd.concat([all_data, data])
@@ -231,7 +229,9 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
             # Add the stock symbol as a column
             data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date'})
+            data = data.rename(
+                columns={'Date': 'reported_date', 'High': 'high', 'Low': 'low', 'Open': 'open', 'Close': 'close',
+                         'Adj Close': 'adj_close', 'Volume': 'volume'})
 
             # Concatenate the new data
             all_data = pd.concat([all_data, data])
@@ -244,13 +244,15 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
             # Add the stock symbol as a column
             data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date'})
+            data = data.rename(
+                columns={'Date': 'reported_date', 'High': 'high', 'Low': 'low', 'Open': 'open', 'Close': 'close',
+                         'Adj Close': 'adj_close', 'Volume': 'volume'})
 
             # Concatenate the new data
             all_data = pd.concat([all_data, data])
 
         # Store the data in PostgreSQL
-        all_data.to_sql('stock_price_history', engine, if_exists='append', index=False, method='multi',chunksize=5000)
+        all_data.to_sql('stock_price_history', engine, schema='stockplot', if_exists='append', index=False, method='multi',chunksize=5000)
         return "Stocks refreshed"
     except Exception as e:
         return e

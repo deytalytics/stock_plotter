@@ -59,7 +59,7 @@ def chat():
 def sql():
     username = get_username(session)
     email = get_email(session)
-    query = text(f"SELECT query_name, sql FROM user_queries WHERE email = '{email}'")
+    query = text(f"SELECT query_name, sql FROM admin.user_queries WHERE email = '{email}'")
     with engine.connect() as connection:
         result = connection.execute(query)
     error = session.get('error', None)
@@ -77,7 +77,6 @@ def query():
     # Get the SQL query from the form
     sql = request.form['sql']
     username = get_username(session)
-
     try:
         # Execute the SQL query
         df = pd.read_sql_query(sql, engine)
@@ -90,7 +89,7 @@ def query():
             response.headers['Content-Type'] = 'text/csv'
             return response
         elif export_format == 'html':
-            return render_template('resultset.html',  table=df.to_html(classes='table table-bordered custom-table-striped', header="true", index=False))
+            return render_template('resultset.html', user=username, table=df.to_html(classes='table table-bordered custom-table-striped', header="true", index=False))
     except ProgrammingError as e:
         error_message = str(e)
         error_message = error_message.split("(Background on this error at:")[0]
@@ -112,7 +111,7 @@ def save_query():
 
     with engine.connect() as connection:
         metadata = MetaData()
-        queries = Table('user_queries', metadata, autoload_with=engine)
+        queries = Table('user_queries', metadata, autoload_with=engine, schema='admin')
 
         # Check if the record exists
         sel = select(queries).where(and_(queries.c.email == email, queries.c.query_name == query_name))
@@ -140,7 +139,7 @@ def delete_query():
 
     try:
         with engine.connect() as connection:
-            del_stmt = text(f"DELETE FROM user_queries WHERE email = '{email}' AND query_name = '{query_name}'")
+            del_stmt = text(f"DELETE FROM admin.user_queries WHERE email = '{email}' AND query_name = '{query_name}'")
             connection.execute(del_stmt)
             connection.commit()
             return jsonify(success=True)
@@ -221,7 +220,7 @@ def get_stocks_returns():
     for stock in user_stocks:
         if stock[0]==email:
             returns[stock[1]] = precalculated_returns[stock[1]]
-            plot_div = load_plots(returns, time_periods, ftse_100_stocks, sp500_stocks, dax_stocks)
+    plot_div = load_plots(returns, time_periods, ftse_100_stocks, sp500_stocks, dax_stocks)
     return render_template('stocks.html', user = get_username(session), ftse_100_stocks=ftse_100_stocks, dax_stocks = dax_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, returns=returns)
 
 @app.route('/login')
