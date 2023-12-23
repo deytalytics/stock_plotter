@@ -78,6 +78,8 @@ def query():
     sql = request.form['sql']
     username = get_username(session)
     try:
+        engine = connect_db('stockplot')
+
         # Execute the SQL query
         df = pd.read_sql_query(sql, engine)
 

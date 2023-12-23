@@ -5,8 +5,11 @@ import plotly.offline as pyo
 import pandas as pd, os, datetime
 import yfinance as yf
 
-def connect_db():
-    username = os.getenv('USER')
+def connect_db(user=None):
+    if user is None:
+        username = os.getenv('USER')
+    else:
+        username = user
     password = os.getenv('PASSWORD')
     engine = create_engine(
         f'postgresql://{username}:{password}@postgres-srvr.postgres.database.azure.com/data_product_metadata')
