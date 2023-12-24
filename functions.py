@@ -1,9 +1,11 @@
 from sqlalchemy import create_engine, text, Table, MetaData, select
 from sqlalchemy.orm import sessionmaker
+from multiprocessing import Pool
 import plotly.graph_objs as go
 import plotly.offline as pyo
 import pandas as pd, os, datetime
 import yfinance as yf
+
 
 def connect_db(user=None):
     if user is None:
@@ -44,16 +46,43 @@ def load_all_user_stocks(engine):
     return user_stocks_list
 
 def load_stock_price_history(engine):
-    #fetch the stock_price_history from the database
-    query = "select * from stockplot.stock_price_history"
+    # Initialize a list to hold the DataFrames
+    dfs = []
 
-    # Use pandas to execute the query and load the data into a DataFrame
-    stock_price_history = pd.read_sql_query(query, engine)
+    # Get the maximum reported_date
+    max_date_query = "SELECT MAX(reported_date) FROM stockplot.stock_price_history"
+    max_date = pd.read_sql_query(max_date_query, engine).iloc[0, 0]
+
+    # Loop over the range of years
+    for x in range(26):  # 26 because range is exclusive of the stop value
+        # Calculate the date x years before the max_date
+        target_date = max_date - pd.DateOffset(years=x)
+
+        # Fetch the stock_price_history for the nearest date <= target_date
+        query = f"""
+        SELECT *
+        FROM stockplot.stock_price_history
+        WHERE reported_date = (
+            SELECT MAX(reported_date)
+            FROM stockplot.stock_price_history
+            WHERE reported_date <= '{target_date.strftime('%Y-%m-%d')}'
+        )
+        """
+
+        # Use pandas to execute the query and load the data into a DataFrame
+        result = pd.read_sql_query(query, engine)
+
+        # Append the DataFrame to the list
+        dfs.append(result)
+
+    # Concatenate all the DataFrames in the list
+    stock_price_history = pd.concat(dfs)
 
     # Make sure 'reported_date' is a datetime object
     stock_price_history['reported_date'] = pd.to_datetime(stock_price_history['reported_date'])
 
     return stock_price_history
+
 
 def precalculate_returns(stock_price_history, time_periods):
     # Create a dictionary to store the pre-calculated returns for each stock
@@ -71,10 +100,10 @@ def precalculate_returns(stock_price_history, time_periods):
         stock_returns = []
 
         # Loop over all time periods
-        for period, days in time_periods.items():
-            # Get the data for the latest date and the date 'days' ago
+        for period, years in time_periods.items():
+            # Get the data for the latest reported date and the reported date x years ago
             period_data = stock_data[(stock_data['reported_date'] == max_date) |
-                                     (stock_data['reported_date'] <= max_date - pd.Timedelta(days=days))].sort_values(
+                                     (stock_data['reported_date'] <= max_date - pd.DateOffset(years=years))].sort_values(
                 'reported_date').tail(2)
 
             if len(period_data) > 0:  # Check if data is available
@@ -149,55 +178,50 @@ def load_market_stocks(engine):
 
     return jsons['FTSE 100'], jsons['DAX'], jsons['S&P 500']
 
+def download_and_insert(stock_dict):
+    all_data = pd.DataFrame()
+    for symbol, company in stock_dict.items():
+        try:
+            # Download the stock data
+            data = yf.download(symbol, period='max')
+            data = data.reset_index()
+
+            # Add the stock symbol as a column
+            data['stock_symbol'] = symbol
+            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
+
+            # Append the data to the all_data DataFrame
+            all_data = pd.concat([all_data, data], ignore_index=True)
+        except Exception as e:
+            print(str(e))
+
+    # Insert all_data into the database
+    try:
+        engine = connect_db()
+        all_data.to_sql('stock_price_history', engine, if_exists='append', schema='stockplot', index=False, method='multi', chunksize=5000)
+    except Exception as e:
+        print(str(e))
+
 def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
     try:
-        # Create an empty DataFrame to store all the data
-        all_data = pd.DataFrame()
+        print("truncating stock_price_history")
+        delete_qry = f"TRUNCATE TABLE stockplot.stock_price_history"
+        # Delete the entries for the current day
+        with engine.begin() as connection:
+            connection.execute(text(delete_qry))
+            connection.commit()
 
-        for symbol, company in ftse_100_stocks.items():
-            # Download the stock data
-            data = yf.download(symbol, period='max')
-            data = data.reset_index()
-
-            # Add the stock symbol as a column
-            data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
-
-            # Append the data to the all_data DataFrame
-            all_data = pd.concat([all_data,data])
-            print(company)
-
-        for symbol, company in sp500_stocks.items():
-            # Download the stock data
-            data = yf.download(symbol, period='max')
-            data = data.reset_index()
-
-            # Add the stock symbol as a column
-            data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
-
-            # Append the data to the all_data DataFrame
-            all_data = pd.concat([all_data,data])
-            print(company)
-
-        for symbol, company in dax_stocks.items():
-            # Download the stock data
-            data = yf.download(symbol, period='max')
-            data = data.reset_index()
-
-            # Add the stock symbol as a column
-            data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
-
-            # Append the data to the all_data DataFrame
-            all_data = pd.concat([all_data,data])
-            print(company)
+        # Download and insert the data in parallel
+        with Pool() as pool:
+            pool.map(download_and_insert, [ftse_100_stocks, dax_stocks, sp500_stocks])
 
         # Store the data in PostgreSQL
-        all_data.to_sql('stock_price_history', engine, 'replace', schema='stockplot', index=False, method='multi',chunksize=5000)
         return "Stocks refreshed"
     except Exception as e:
-        return e
+        return str(e)
+
+
+
 
 def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
     try:
@@ -258,4 +282,21 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
         all_data.to_sql('stock_price_history', engine, schema='stockplot', if_exists='append', index=False, method='multi',chunksize=5000)
         return "Stocks refreshed"
     except Exception as e:
-        return e
+        return str(e)
+
+def refresh_stock(engine, symbol):
+    try:
+        # Create an empty DataFrame to store all the data
+        all_data = pd.DataFrame()
+
+        # Download the stock data
+        data = yf.download(symbol, period='max')
+        data = data.reset_index()
+
+        # Add the stock symbol as a column
+        data['stock_symbol'] = symbol
+        data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
+        data.to_sql('stock_price_history', engine, if_exists='append', schema='stockplot', index=False, method='multi',chunksize=5000)
+        return f"Stock prices for {symbol} refreshed"
+    except Exception as e:
+        return str(e)

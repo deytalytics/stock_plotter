@@ -37,12 +37,14 @@ oauth = OAuth()
 app = create_app()
 app.secret_key=os.getenv('SECRET_KEY')
 
-time_periods = {f"{i}y": 365*i for i in range(1, 26)}
+time_periods = {f"{i}y": i for i in range(1, 26)}
 
 returns={}
-print("Loading stocks, price history and precalculated_returns")
+print("Loading user stocks")
 user_stocks = load_all_user_stocks(engine)
+print("Loading stock price history")
 stock_price_history = load_stock_price_history(engine)
+print("Precalculating returns")
 precalculated_returns = precalculate_returns(stock_price_history, time_periods)
 print("Stocks, price history and precalculated_returns all loaded")
 @app.route('/')
@@ -154,9 +156,24 @@ def full_refresh():
     engine = connect_db()
     ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
     retmsg = refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
+    if retmsg=="Stocks refreshed":
+        print("Loading stock price history")
+        stock_price_history = load_stock_price_history(engine)
+        print("Loading precalculated returns")
+        precalculated_returns = precalculate_returns(stock_price_history, time_periods)
+        print("Loaded stock price history and precalculated returns")
+    return retmsg
+
+@app.route('/refresh_stock')
+def stock_refresh():
+    global stock_price_history, precalculated_returns
+    symbol = request.args.get('ticker', type = str)
+    engine = connect_db()
+    retmsg = refresh_stock(engine, symbol)
     stock_price_history = load_stock_price_history(engine)
     precalculated_returns = precalculate_returns(stock_price_history, time_periods)
     return retmsg
+
 
 @app.route('/daily_refresh')
 def daily_refresh():
@@ -191,7 +208,7 @@ def get_stocks_returns():
     elif selected_market == 'ftse100':
         default_stock = 'JD.L'
     elif selected_market == 'dax':
-        default_stock = 'DHL.DE'
+        default_stock = 'BEI.DE'
     #Either use the selected stock or the default stock
     selected_stock = request.form.get('stock', default_stock)
     if request.method == 'POST':
