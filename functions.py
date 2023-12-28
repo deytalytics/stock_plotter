@@ -58,14 +58,16 @@ def load_stock_price_history(engine):
         # Calculate the date x years before the max_date
         target_date = max_date - pd.DateOffset(years=x)
 
-        # Fetch the stock_price_history for the nearest date <= target_date
+        # Fetch the stock_price_history for the nearest date <= target_date and the two days before it
         query = f"""
         SELECT *
         FROM stockplot.stock_price_history
-        WHERE reported_date = (
-            SELECT MAX(reported_date)
+        WHERE reported_date IN (
+            SELECT distinct reported_date
             FROM stockplot.stock_price_history
             WHERE reported_date <= '{target_date.strftime('%Y-%m-%d')}'
+            ORDER BY reported_date DESC
+            LIMIT 3
         )
         """
 
@@ -82,7 +84,6 @@ def load_stock_price_history(engine):
     stock_price_history['reported_date'] = pd.to_datetime(stock_price_history['reported_date'])
 
     return stock_price_history
-
 
 def precalculate_returns(stock_price_history, time_periods):
     # Create a dictionary to store the pre-calculated returns for each stock
@@ -101,12 +102,17 @@ def precalculate_returns(stock_price_history, time_periods):
 
         # Loop over all time periods
         for period, years in time_periods.items():
-            # Get the data for the latest reported date and the reported date x years ago
-            period_data = stock_data[(stock_data['reported_date'] == max_date) |
-                                     (stock_data['reported_date'] <= max_date - pd.DateOffset(years=years))].sort_values(
-                'reported_date').tail(2)
+            # Get the data for the latest reported date
+            latest_data = stock_data[stock_data['reported_date'] == max_date]
 
-            if len(period_data) > 0:  # Check if data is available
+            # Get the data for the reported date x years ago or the closest prior trading day
+            prior_date = max_date - pd.DateOffset(years=years)
+            prior_data = stock_data[stock_data['reported_date'] <= prior_date].sort_values('reported_date').tail(1)
+
+            # Combine the latest and prior data
+            period_data = pd.concat([prior_data, latest_data])
+
+            if len(period_data) > 1:  # Check if both latest and prior data are available
                 percentage_return = round(
                     (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[0] * 100,
                     2)
@@ -120,8 +126,9 @@ def precalculate_returns(stock_price_history, time_periods):
     return precalculated_returns
 
 #Create the plot for all of the stocks in the stock portfolio
-def load_plots(returns, time_periods, ftse_100_stocks, sp500_stocks, dax_stocks):
+def load_plots(returns, ftse_100_stocks, sp500_stocks, dax_stocks):
     plots = []
+    time_periods = {f"{i}y": i for i in range(1, 26)}
     for stock, ret in returns.items():
         hover_text = [
             f"{next((key for key, value in {**ftse_100_stocks, **sp500_stocks, **dax_stocks}.items() if value == stock), 'Unknown')}, {period}, {r}%"
@@ -220,9 +227,6 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
     except Exception as e:
         return str(e)
 
-
-
-
 def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
     try:
         # Create an empty DataFrame to store all the data
@@ -300,3 +304,14 @@ def refresh_stock(engine, symbol):
         return f"Stock prices for {symbol} refreshed"
     except Exception as e:
         return str(e)
+
+def load_stock_data(engine):
+    time_periods = {f"{i}y": i for i in range(1, 26)}
+    print("Loading user stocks")
+    user_stocks = load_all_user_stocks(engine)
+    print("Loading stock price history")
+    stock_price_history = load_stock_price_history(engine)
+    print("Precalculating returns")
+    precalculated_returns = precalculate_returns(stock_price_history, time_periods)
+    print("Stocks, price history and precalculated_returns all loaded")
+    return user_stocks, stock_price_history, precalculated_returns

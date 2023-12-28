@@ -22,31 +22,17 @@ def create_app():
         }
     )
 
-    # Initialize the global engine variable
-    global engine
-    engine = connect_db()
-
     return app
 
 #load the market stocks from the database
 engine = connect_db()
 ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
+user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
 
 oauth = OAuth()
-
 app = create_app()
 app.secret_key=os.getenv('SECRET_KEY')
 
-time_periods = {f"{i}y": i for i in range(1, 26)}
-
-returns={}
-print("Loading user stocks")
-user_stocks = load_all_user_stocks(engine)
-print("Loading stock price history")
-stock_price_history = load_stock_price_history(engine)
-print("Precalculating returns")
-precalculated_returns = precalculate_returns(stock_price_history, time_periods)
-print("Stocks, price history and precalculated_returns all loaded")
 @app.route('/')
 def homepage():
     username = get_username(session)
@@ -157,11 +143,7 @@ def full_refresh():
     ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
     retmsg = refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
     if retmsg=="Stocks refreshed":
-        print("Loading stock price history")
-        stock_price_history = load_stock_price_history(engine)
-        print("Loading precalculated returns")
-        precalculated_returns = precalculate_returns(stock_price_history, time_periods)
-        print("Loaded stock price history and precalculated returns")
+        user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
     return retmsg
 
 @app.route('/refresh_stock')
@@ -170,8 +152,7 @@ def stock_refresh():
     symbol = request.args.get('ticker', type = str)
     engine = connect_db()
     retmsg = refresh_stock(engine, symbol)
-    stock_price_history = load_stock_price_history(engine)
-    precalculated_returns = precalculate_returns(stock_price_history, time_periods)
+    user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
     return retmsg
 
 
@@ -181,8 +162,7 @@ def daily_refresh():
     engine = connect_db()
     ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
     retmsg = daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
-    stock_price_history = load_stock_price_history(engine)
-    precalculated_returns = precalculate_returns(stock_price_history, time_periods)
+    user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
     return retmsg
 
 @app.route('/blog')
@@ -239,16 +219,19 @@ def get_stocks_returns():
     for stock in user_stocks:
         if stock[0]==email:
             returns[stock[1]] = precalculated_returns[stock[1]]
-    plot_div = load_plots(returns, time_periods, ftse_100_stocks, sp500_stocks, dax_stocks)
+    plot_div = load_plots(returns, ftse_100_stocks, sp500_stocks, dax_stocks)
     return render_template('stocks.html', user = get_username(session), ftse_100_stocks=ftse_100_stocks, dax_stocks = dax_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, returns=returns)
 
 @app.route('/login')
 def login():
-    redirect_uri = f"{request.host_url}authorize"
-    state = str(uuid.uuid4())
-    session['state'] = state
-    session['referrer'] = request.referrer
-    return oauth.google.authorize_redirect(redirect_uri, _external=True, state=state)
+    try:
+        redirect_uri = f"{request.host_url}authorize"
+        state = str(uuid.uuid4())
+        session['state'] = state
+        session['referrer'] = request.referrer
+        return oauth.google.authorize_redirect(redirect_uri, _external=True, state=state)
+    except Exception as e:
+        return str(e)
 
 @app.route('/logout')
 def logout():
@@ -259,13 +242,16 @@ def logout():
 
 @app.route('/authorize')
 def authorize():
-    # Check that the state in the session matches the state parameter in the request
-    state = session.get('state','')
-    if request.args.get('state', '') != session.get('state', ''):
-        return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')}"
-    token = oauth.google.authorize_access_token()
-    session['user'] = token['userinfo']
-    return redirect(session.get('referrer','/'))
+    try:
+        # Check that the state in the session matches the state parameter in the request
+        state = session.get('state','')
+        if request.args.get('state', '') != session.get('state', ''):
+            return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')}"
+        token = oauth.google.authorize_access_token()
+        session['user'] = token['userinfo']
+        return redirect(session.get('referrer','/'))
+    except Exception as e:
+        return str(e)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5050)

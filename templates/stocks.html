@@ -156,7 +156,7 @@ function sortTable(n, initialSort = false) {
                                             </a>
                         </td>
                         {% for value in performance %}
-                            <td>{{ value | round | int }}</td>
+                            <td>{{ value | int }}</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
