@@ -131,8 +131,8 @@ def load_plots(returns, ftse_100_stocks, sp500_stocks, dax_stocks):
     time_periods = {f"{i}y": i for i in range(1, 26)}
     for stock, ret in returns.items():
         hover_text = [
-            f"{next((key for key, value in {**ftse_100_stocks, **sp500_stocks, **dax_stocks}.items() if value == stock), 'Unknown')}, {period}, {r}%"
-            for period, r in zip(time_periods, ret)
+    f"{stock}, {ftse_100_stocks.get(stock) or sp500_stocks.get(stock) or dax_stocks.get(stock)}, {period}, {r}%"
+    for period, r in zip(time_periods, ret)
         ]
         trace = go.Scatter(x=list(time_periods.keys()), y=ret, mode='lines+markers', name=stock, hoverinfo='text', text=hover_text)
         plots.append(trace)
