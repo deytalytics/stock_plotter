@@ -256,7 +256,6 @@ def authorize():
             return f"Error: state mismatch request:{request.args.get('state','')} session:{session.get('state','')}"
         token = oauth.google.authorize_access_token()
         session['user'] = token['userinfo']
-        del request.session['state']
         return redirect(session.get('referrer','/'))
     except Exception as e:
         return str(e)
