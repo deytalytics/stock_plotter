@@ -91,7 +91,8 @@
                 Write a standard SQL query and the resultset will be returned as a file (currently HTML & CSV only).<br><br>
                 The tables that you can select from are:-<br>
                 <li><b>stockplot.stock_price_history</b> - provides prices('Open','High','Low','Close','Adj Close') and 'Volume' for FTSE100, DAX and the magnificent 7 'stock_name' for a 'reported_date'. The stock_symbol follows yahoo finance ticker format</li>
-                <li><b>stockplot.market_stocks</b> - provides the market (FTSE 100 | DAX | S&P 500), the stock_name and it's stock_symbol</li>
+                <li><b>stockplot.market_stocks</b> - provides the market (FTSE 100 | DAX | S&P 500), the stock_name and it's stock_symbol and it's industry_name</li>
+                <li><b>stockplot.market_industries</b> - provides a list of industry_name used to categorise stocks in the market_stocks table</li>
                 {% if error %}
                 <script>
                     var errorMessage = "{{ error|escape|replace('\n', ' ')|replace('\r', '') }}";
