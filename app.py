@@ -165,6 +165,13 @@ def daily_refresh():
     user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
     return retmsg
 
+@app.route('/refresh_returns')
+def refresh_returns():
+    global stock_price_history, precalculated_returns
+    engine = connect_db()
+    user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
+    return "Stock price history refreshed from database and precalculated returns recalculated "
+
 @app.route('/blog')
 def blog():
     username = get_username(session)

@@ -184,7 +184,6 @@ function sortTable(n, initialSort = false) {
             });
         });
 
-        // Load the stocks for the selected market
         function loadStocks(market, selectedStock) {
             // Get the stocks for the selected market
             var stocks;
@@ -198,10 +197,17 @@ function sortTable(n, initialSort = false) {
                 stocks = daxStocks;
                 selectedStock = (selectedStock && selectedStock !== 'NVDA') ? selectedStock : 'DHL.DE';
             }
+
+            // Create an array of keys (stock symbols), sort it by the corresponding stock name
+            var sortedStockSymbols = Object.keys(stocks).sort(function(a, b) {
+                return stocks[a].localeCompare(stocks[b]);
+            });
+
             // Update the options in the stock dropdown
             var select = document.querySelector('#stock-select');
             select.innerHTML = '';
-            for (var stock in stocks) {
+            for (var i = 0; i < sortedStockSymbols.length; i++) {
+                var stock = sortedStockSymbols[i];
                 var option = document.createElement('option');
                 option.value = stock;
                 option.text = stocks[stock];
@@ -210,9 +216,9 @@ function sortTable(n, initialSort = false) {
 
             // Set the selected (or default) Stock
             select.value = selectedStock;
-
             document.querySelector('#stock-select').value = selectedStock;
         }
+
 
         // Call loadStocks when the page loads
         document.addEventListener('DOMContentLoaded', function() {
