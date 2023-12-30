@@ -71,6 +71,9 @@ def query():
         # Execute the SQL query
         df = pd.read_sql_query(sql, engine)
 
+        # Convert the DataFrame to a list of dictionaries
+        data = df.to_dict('records')
+
         # Export the result to CSV or HTML format
         export_format = request.form.get('export')
         if export_format == 'csv':
@@ -79,7 +82,8 @@ def query():
             response.headers['Content-Type'] = 'text/csv'
             return response
         elif export_format == 'html':
-            return render_template('resultset.html', user=username, table=df.to_html(classes='table table-bordered custom-table-striped', header="true", index=False))
+            keys_order = list(data[0].keys())
+            return render_template('resultset.html', user=username, data=data, keys_order = keys_order)
     except ProgrammingError as e:
         error_message = str(e)
         error_message = error_message.split("(Background on this error at:")[0]
@@ -90,6 +94,7 @@ def query():
         session['error'] = error_message
         session['sql'] = sql
         return redirect(url_for('sql'))
+
 
 
 @app.route('/save_query', methods=['POST'])
