@@ -21,6 +21,14 @@
         #table .tabulator-footer {
             background-color: #AED6F1; /* Darker Light Blue */
         }
+
+        #table {
+    text-align: center; /* center the button horizontally */
+}
+
+button {
+    vertical-align: middle; /* center the button vertically */
+}
     </style>
 
 
@@ -30,33 +38,47 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.9.3/dist/js/tabulator.min.js"></script>
 <script>
-    // Assume keys_order is passed into the template
-    var keys_order = {{ keys_order|tojson|safe }};
+// Assume keys_order is passed into the template
+var keys_order = {{ keys_order|tojson|safe }};
 
-    // Generate the column definitions
-    var columns = keys_order.map(function(key) {
-        return {title: key.charAt(0).toUpperCase() + key.slice(1), field: key};
-    });
+// Generate the column definitions
+var columns = keys_order.map(function(key) {
+    return {title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter:true}; // add headerFilter:true to enable header filters
+});
 
-    var table = new Tabulator("#table", {
-        data: {{ data|tojson|safe }}, //assign data to table
-        columns: columns,
-        layout:"fitColumns", //fit columns to width of table (optional)
-        responsiveLayout:"hide", //hide columns that dont fit on the table
-        tooltips:true, //show tool tips on cells
-        addRowPos:"top", //when adding a new row, add it to the top of the table
-        history:true, //allow undo and redo actions on the table
-        pagination:"local", //paginate the data
-        paginationSize:20, //allow 20 rows per page of data
-        movableColumns:true, //allow column order to be changed
-        resizableRows:true, //allow row order to be changed
-    });
+var table = new Tabulator("#table", {
+    data: {{ data|tojson|safe }}, //assign data to table
+    columns: columns,
+    layout:"fitColumns", //fit columns to width of table (optional)
+    responsiveLayout:"hide", //hide columns that dont fit on the table
+    tooltips:true, //show tool tips on cells
+    addRowPos:"top", //when adding a new row, add it to the top of the table
+    history:true, //allow undo and redo actions on the table
+    pagination:"local", //paginate the data
+    paginationSize:20, //allow 20 rows per page of data
+    movableColumns:true, //allow column order to be changed
+    resizableRows:true, //allow row order to be changed,
+});
 
-    // Apply styles after the table is initialized
-    var headers = document.querySelectorAll("#table .tabulator-header .tabulator-col");
-    headers.forEach(function(header) {
-        header.style.backgroundColor = "#AED6F1";
-    });
+// Apply styles after the table is initialized
+var headers = document.querySelectorAll("#table .tabulator-header .tabulator-col");
+headers.forEach(function(header) {
+    header.style.backgroundColor = "#AED6F1";
+});
+
+// Get the reference element
+var firstPage = document.querySelector(".tabulator-page");
+
+// Create the new element
+var button = document.createElement("button");
+button.innerHTML = "Clear Filters";
+button.onclick = function() {
+    table.clearHeaderFilter(); // clear all the header filters
+};
+
+// Insert the new element before the reference element
+firstPage.insertAdjacentElement("beforebegin", button);
+
 </script>
 </body>
 </html>
