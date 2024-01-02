@@ -67,7 +67,7 @@ def load_stock_price_history(engine):
             FROM stockplot.stock_price_history
             WHERE reported_date <= '{target_date.strftime('%Y-%m-%d')}'
             ORDER BY reported_date DESC
-            LIMIT 3
+            LIMIT 1
         )
         """
 
@@ -125,6 +125,19 @@ def precalculate_returns(stock_price_history, time_periods):
 
     return precalculated_returns
 
+def fetch_last_refresh_timestamp():
+    engine = connect_db()
+    with engine.connect() as connection:
+        result = connection.execute(text("select last_refresh_timestamp from admin.app_info"))
+        row = result.fetchone()
+        return row[0].strftime('%Y-%m-%d %H:%M:%S')
+
+def set_last_refresh_timestamp():
+    engine = connect_db()
+    with engine.connect() as connection:
+        connection.execute(text("update admin.app_info set last_refresh_timestamp = current_timestamp"))
+        connection.commit()
+
 #Create the plot for all of the stocks in the stock portfolio
 def load_plots(returns, ftse_100_stocks, sp500_stocks, dax_stocks):
     plots = []
@@ -137,8 +150,11 @@ def load_plots(returns, ftse_100_stocks, sp500_stocks, dax_stocks):
         trace = go.Scatter(x=list(time_periods.keys()), y=ret, mode='lines+markers', name=stock, hoverinfo='text', text=hover_text)
         plots.append(trace)
 
+
+    last_refresh_timestamp = fetch_last_refresh_timestamp()
+
     layout = go.Layout(
-        title='Stock Returns Over Time',
+        title=f'Stock Returns Over Time (last updated { last_refresh_timestamp } for close prices on last trading day)',
         xaxis=dict(title='Time Period'),
         yaxis=dict(title='%age Return')
     )
@@ -222,8 +238,11 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
         with Pool() as pool:
             pool.map(download_and_insert, [ftse_100_stocks, dax_stocks, sp500_stocks])
 
+        set_last_refresh_timestamp()
+        last_refresh_timestamp = fetch_last_refresh_timestamp()
+
         # Store the data in PostgreSQL
-        return "Stocks refreshed"
+        return f"Stocks refreshed at { last_refresh_timestamp }"
     except Exception as e:
         return str(e)
 
@@ -284,7 +303,11 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
         # Store the data in PostgreSQL
         all_data.to_sql('stock_price_history', engine, schema='stockplot', if_exists='append', index=False, method='multi',chunksize=5000)
-        return "Stocks refreshed"
+        set_last_refresh_timestamp()
+        last_refresh_timestamp = fetch_last_refresh_timestamp()
+
+        # Store the data in PostgreSQL
+        return f"Stocks refreshed at {last_refresh_timestamp}"
     except Exception as e:
         return str(e)
 
@@ -301,7 +324,11 @@ def refresh_stock(engine, symbol):
         data['stock_symbol'] = symbol
         data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
         data.to_sql('stock_price_history', engine, if_exists='append', schema='stockplot', index=False, method='multi',chunksize=5000)
-        return f"Stock prices for {symbol} refreshed"
+        set_last_refresh_timestamp()
+        last_refresh_timestamp = fetch_last_refresh_timestamp()
+
+        # Store the data in PostgreSQL
+        return f"Stock prices for {symbol} refreshed at { last_refresh_timestamp }"
     except Exception as e:
         return str(e)
 
