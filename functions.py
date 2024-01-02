@@ -58,7 +58,7 @@ def load_stock_price_history(engine):
         # Calculate the date x years before the max_date
         target_date = max_date - pd.DateOffset(years=x)
 
-        # Fetch the stock_price_history for the nearest date <= target_date and the two days before it
+        # Fetch the stock_price_history for the nearest date <= target_date and four days before it (to take care of non-trading days)
         query = f"""
         SELECT *
         FROM stockplot.stock_price_history
@@ -67,7 +67,7 @@ def load_stock_price_history(engine):
             FROM stockplot.stock_price_history
             WHERE reported_date <= '{target_date.strftime('%Y-%m-%d')}'
             ORDER BY reported_date DESC
-            LIMIT 1
+            LIMIT 5
         )
         """
 
@@ -139,12 +139,12 @@ def set_last_refresh_timestamp():
         connection.commit()
 
 #Create the plot for all of the stocks in the stock portfolio
-def load_plots(returns, ftse_100_stocks, sp500_stocks, dax_stocks):
+def load_plots(returns, ftse100_stocks, dax_stocks, sp500_stocks):
     plots = []
     time_periods = {f"{i}y": i for i in range(1, 26)}
     for stock, ret in returns.items():
         hover_text = [
-    f"{stock}, {ftse_100_stocks.get(stock) or sp500_stocks.get(stock) or dax_stocks.get(stock)}, {period}, {r}%"
+    f"{stock}, {ftse100_stocks.get(stock) or dax_stocks.get(stock) or sp500_stocks.get(stock)}, {period}, {r}%"
     for period, r in zip(time_periods, ret)
         ]
         trace = go.Scatter(x=list(time_periods.keys()), y=ret, mode='lines+markers', name=stock, hoverinfo='text', text=hover_text)
@@ -179,27 +179,25 @@ def get_email(session):
     return email
 
 
+from sqlalchemy import create_engine, text
+
 def load_market_stocks(engine):
-    metadata = MetaData()
-    market_stocks = Table('market_stocks', metadata, autoload_with=engine, schema = 'stockplot')
+    with engine.connect() as connection:
+        result = connection.execute(text("SELECT * FROM stockplot.market_stocks"))
 
-    Session = sessionmaker(bind=engine)
-    session = Session()
+        jsons = {}
+        for row in result:
+            market = row[0]
+            stock_name = row[1]
+            stock_symbol = row[2]
+            industry_name = row[3]
 
-    markets = ['FTSE 100', 'DAX', 'S&P 500']
-    jsons = {}
+            if market not in jsons:
+                jsons[market] = {}
 
-    for market in markets:
-        sel = select(market_stocks).where(market_stocks.c.market == market)
-        result = session.execute(sel).fetchall()
+            jsons[market][stock_symbol] = {'stock_name': stock_name, 'industry_name': industry_name}
 
-        data = {row[2]: row[1] for row in result}
-
-        jsons[market] = data
-
-    session.close()
-
-    return jsons['FTSE 100'], jsons['DAX'], jsons['S&P 500']
+    return jsons
 
 def download_and_insert(stock_dict):
     all_data = pd.DataFrame()
@@ -225,7 +223,7 @@ def download_and_insert(stock_dict):
     except Exception as e:
         print(str(e))
 
-def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
+def refresh_stocks(engine, market_stocks):
     try:
         print("truncating stock_price_history")
         delete_qry = f"TRUNCATE TABLE stockplot.stock_price_history"
@@ -236,7 +234,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
 
         # Download and insert the data in parallel
         with Pool() as pool:
-            pool.map(download_and_insert, [ftse_100_stocks, dax_stocks, sp500_stocks])
+            pool.map(download_and_insert, [market_stocks])
 
         set_last_refresh_timestamp()
         last_refresh_timestamp = fetch_last_refresh_timestamp()
@@ -246,7 +244,7 @@ def refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
     except Exception as e:
         return str(e)
 
-def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
+def daily_refresh_stocks(engine, market_stocks):
     try:
         # Create an empty DataFrame to store all the data
         all_data = pd.DataFrame()
@@ -258,48 +256,19 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
         with engine.begin() as connection:
             connection.execute(text(delete_qry))
 
-        for symbol, company in ftse_100_stocks.items():
-            # Download the stock data for the last week
-            print(company)
-            data = yf.download(symbol, start=one_week_ago)
-            data = data.reset_index()
+        for market, stocks in market_stocks.items():
+            for symbol, details in stocks.items():
+                # Download the stock data for the last week
+                print(details['stock_name'])
+                data = yf.download(symbol, start=one_week_ago)
+                data = data.reset_index()
 
-            # Add the stock symbol as a column
-            data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
+                # Add the stock symbol as a column
+                data['stock_symbol'] = symbol
+                data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
 
-            # Concatenate the new data
-            all_data = pd.concat([all_data, data])
-
-        for symbol, company in dax_stocks.items():
-            # Download the stock data for the last week
-            print(company)
-            data = yf.download(symbol, start=one_week_ago)
-            data = data.reset_index()
-
-            # Add the stock symbol as a column
-            data['stock_symbol'] = symbol
-            data = data.rename(
-                columns={'Date': 'reported_date', 'High': 'high', 'Low': 'low', 'Open': 'open', 'Close': 'close',
-                         'Adj Close': 'adj_close', 'Volume': 'volume'})
-
-            # Concatenate the new data
-            all_data = pd.concat([all_data, data])
-
-        for symbol, company in sp500_stocks.items():
-            # Download the stock data for the last week
-            print(company)
-            data = yf.download(symbol, start=one_week_ago)
-            data = data.reset_index()
-
-            # Add the stock symbol as a column
-            data['stock_symbol'] = symbol
-            data = data.rename(
-                columns={'Date': 'reported_date', 'High': 'high', 'Low': 'low', 'Open': 'open', 'Close': 'close',
-                         'Adj Close': 'adj_close', 'Volume': 'volume'})
-
-            # Concatenate the new data
-            all_data = pd.concat([all_data, data])
+                # Concatenate the new data
+                all_data = pd.concat([all_data, data])
 
         # Store the data in PostgreSQL
         all_data.to_sql('stock_price_history', engine, schema='stockplot', if_exists='append', index=False, method='multi',chunksize=5000)
@@ -310,6 +279,7 @@ def daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks):
         return f"Stocks refreshed at {last_refresh_timestamp}"
     except Exception as e:
         return str(e)
+
 
 def refresh_stock(engine, symbol):
     try:

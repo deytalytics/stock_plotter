@@ -26,7 +26,8 @@ def create_app():
 
 #load the market stocks from the database
 engine = connect_db()
-ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
+market_stocks = load_market_stocks(engine)
+
 user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
 
 oauth = OAuth()
@@ -42,6 +43,11 @@ def homepage():
 def chat():
     username = get_username(session)
     return render_template('chat.html', user = username)
+
+@app.route('/reports')
+def reports():
+    username = get_username(session)
+    return render_template('reports.html', user = username)
 
 @app.route('/sql')
 def sql():
@@ -86,15 +92,53 @@ def query():
             return render_template('resultset.html', user=username, data=data, keys_order = keys_order)
     except ProgrammingError as e:
         error_message = str(e)
-        error_message = error_message.split("(Background on this error at:")[0]
+        return error_message
 
-        # Remove the technical details from the error message
-        error_message = re.sub(r'\(psycopg2\.errors\.\w+\)', '', error_message)
+@app.route('/performance', methods=['GET'])
+def performance():
+    # Get the 'years' parameter from the request
+    years = int(request.args.get('years'))
+    username = get_username(session)
+    try:
+        # Initialize an empty list to hold the new dictionaries
+        data = []
 
-        session['error'] = error_message
-        session['sql'] = sql
-        return redirect(url_for('sql'))
+        # Iterate over the dictionary
+        for market, stocks in market_stocks.items():
+            for stock_symbol, returns in precalculated_returns.items():
+                if stock_symbol in stocks:
+                    # Fetch the x cumulative annual return
+                    percentage_increase = returns[years-1]
 
+                    # Construct the new dictionary and append it to the list
+                    data.append({
+                        'stock_symbol': stock_symbol,
+                        'stock_name': stocks[stock_symbol]['stock_name'],
+                        'industry_name': stocks[stock_symbol]['industry_name'],
+                        'percentage_increase': percentage_increase
+                    })
+
+        # Filter out dictionaries where 'percentage_increase' is None
+        data = [d for d in data if d['percentage_increase'] is not None]
+
+        # Sort the data list by 'percentage_increase' in descending order
+        data = sorted(data, key=lambda x: x['percentage_increase'], reverse=True)
+
+        # Export the result to CSV or HTML format
+        export_format = 'html'
+
+        if export_format == 'csv':
+            response = make_response(df.to_csv(index=False))
+            response.headers['Content-Disposition'] = 'attachment; filename=result.csv'
+            response.headers['Content-Type'] = 'text/csv'
+            return response
+        elif export_format == 'html':
+            keys_order = list(data[0].keys())
+            return render_template('resultset.html', report_title = f"{years} year performance", user=username, data=data, keys_order = keys_order)
+
+    except ProgrammingError as e:
+        error_message = str(e)
+        return error_message
 
 
 @app.route('/save_query', methods=['POST'])
@@ -145,8 +189,8 @@ def delete_query():
 def full_refresh():
     global stock_price_history, precalculated_returns
     engine = connect_db()
-    ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
-    retmsg = refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
+    market_stocks = load_market_stocks(engine)
+    retmsg = refresh_stocks(engine, market_stocks)
     if retmsg=="Stocks refreshed":
         user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
     return retmsg
@@ -165,8 +209,8 @@ def stock_refresh():
 def daily_refresh():
     global stock_price_history, precalculated_returns
     engine = connect_db()
-    ftse_100_stocks, dax_stocks, sp500_stocks = load_market_stocks(engine)
-    retmsg = daily_refresh_stocks(engine, ftse_100_stocks, dax_stocks, sp500_stocks)
+    market_stocks = load_market_stocks(engine)
+    retmsg = daily_refresh_stocks(engine, market_stocks)
     user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
     return retmsg
 
@@ -231,8 +275,25 @@ def get_stocks_returns():
     for stock in user_stocks:
         if stock[0]==email:
             returns[stock[1]] = precalculated_returns[stock[1]]
-    plot_div = load_plots(returns, ftse_100_stocks, sp500_stocks, dax_stocks)
-    return render_template('stocks.html', user = get_username(session), ftse_100_stocks=ftse_100_stocks, dax_stocks = dax_stocks, sp500_stocks = sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, returns=returns)
+
+    # Initialize empty dictionaries for each market
+    ftse100_stocks = {}
+    dax_stocks = {}
+    sp500_stocks = {}
+
+    # Iterate over market_stocks
+    for market, stocks in market_stocks.items():
+        if market == 'FTSE 100':
+            ftse100_stocks = stocks
+        elif market == 'DAX':
+            dax_stocks = stocks
+        elif market == 'S&P 500':
+            sp500_stocks = stocks
+
+    #load the plot data
+    plot_div = load_plots(returns, ftse100_stocks, dax_stocks, sp500_stocks)
+
+    return render_template('stocks.html', user = get_username(session), ftse100_stocks=ftse100_stocks, dax_stocks=dax_stocks, sp500_stocks=sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, returns=returns)
 
 @app.route('/login')
 def login():

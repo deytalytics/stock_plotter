@@ -99,8 +99,8 @@ function sortTable(n, initialSort = false) {
                 <div id="ftse100" class="me-2" style="cursor: pointer; color: red;">FTSE100</div>
                 <div id="dax" class="me-2" style="cursor: pointer; color: #b59410">DAX</div>
                 <select name="stock" id="stock-select" class="form-select me-2">
-                    {% for ticker, stock in ftse_100_stocks.items() %}
-                        <option value="{{ ticker }}" {% if ticker == selected_stock %}selected{% endif %}>{{ stock }}</option>
+                    {% for ticker, stock in ftse100_stocks.items() %}
+                        <option value="{{ ticker }}" {% if ticker == selected_stock %}selected{% endif %}>{{ stock['stock_name'] }}</option>
                     {% endfor %}
                 </select>
                 <div class="d-flex">
@@ -146,11 +146,11 @@ function sortTable(n, initialSort = false) {
                         <td class="fixed">
                                             <a href="https://uk.finance.yahoo.com/quote/{{ stock }}/key-statistics"
                                                title="{% if stock.endswith('.L') %}
-                                                          {{ ftse_100_stocks[stock] }}
+                                                          {{ ftse100_stocks[stock]['stock_name'] }}
                                                       {% elif stock.endswith('.DE') %}
-                                                          {{ dax_stocks[stock] }}
+                                                          {{ dax_stocks[stock]['stock_name'] }}
                                                       {% else %}
-                                                          {{ sp500_stocks[stock] }}
+                                                          {{ sp500_stocks[stock]['stock_name'] }}
                                                       {% endif %}">
                                                 {{ stock }}
                                             </a>
@@ -166,7 +166,7 @@ function sortTable(n, initialSort = false) {
 
     <script>
         // Store the stocks in JavaScript variables
-        var ftse100Stocks = {{ ftse_100_stocks | tojson }};
+        var ftse100Stocks = {{ ftse100_stocks | tojson }};
         var daxStocks = {{ dax_stocks | tojson }};
         var sp500Stocks = {{ sp500_stocks | tojson }};
 
@@ -184,40 +184,41 @@ function sortTable(n, initialSort = false) {
             });
         });
 
-        function loadStocks(market, selectedStock) {
-            // Get the stocks for the selected market
-            var stocks;
-            if (market == 'sp500') {
-                stocks = sp500Stocks;
-                selectedStock = selectedStock || 'NVDA';
-            } else if (market == 'ftse100') {
-                stocks = ftse100Stocks;
-                selectedStock = (selectedStock && selectedStock !== 'NVDA') ? selectedStock : 'JD.L';
-            } else if (market == 'dax') {
-                stocks = daxStocks;
-                selectedStock = (selectedStock && selectedStock !== 'NVDA') ? selectedStock : 'DHL.DE';
-            }
+function loadStocks(market, selectedStock) {
+    // Get the stocks for the selected market
+    var stocks;
+    if (market == 'sp500') {
+        stocks = sp500Stocks;
+        selectedStock = selectedStock || 'NVDA';
+    } else if (market == 'ftse100') {
+        stocks = ftse100Stocks;
+        selectedStock = (selectedStock && selectedStock !== 'NVDA') ? selectedStock : 'JD.L';
+    } else if (market == 'dax') {
+        stocks = daxStocks;
+        selectedStock = (selectedStock && selectedStock !== 'NVDA') ? selectedStock : 'DHL.DE';
+    }
 
-            // Create an array of keys (stock symbols), sort it by the corresponding stock name
-            var sortedStockSymbols = Object.keys(stocks).sort(function(a, b) {
-                return stocks[a].localeCompare(stocks[b]);
-            });
+    // Create an array of keys (stock symbols), sort it by the corresponding stock name
+    var sortedStockSymbols = Object.keys(stocks).sort(function(a, b) {
+        return stocks[a]['stock_name'].localeCompare(stocks[b]['stock_name']);
+    });
 
-            // Update the options in the stock dropdown
-            var select = document.querySelector('#stock-select');
-            select.innerHTML = '';
-            for (var i = 0; i < sortedStockSymbols.length; i++) {
-                var stock = sortedStockSymbols[i];
-                var option = document.createElement('option');
-                option.value = stock;
-                option.text = stocks[stock];
-                select.add(option);
-            }
+    // Update the options in the stock dropdown
+    var select = document.querySelector('#stock-select');
+    select.innerHTML = '';
+    for (var i = 0; i < sortedStockSymbols.length; i++) {
+        var stock = sortedStockSymbols[i];
+        var option = document.createElement('option');
+        option.value = stock;
+        option.text = stocks[stock]['stock_name'];
+        select.add(option);
+    }
 
-            // Set the selected (or default) Stock
-            select.value = selectedStock;
-            document.querySelector('#stock-select').value = selectedStock;
-        }
+    // Set the selected (or default) Stock
+    select.value = selectedStock;
+    document.querySelector('#stock-select').value = selectedStock;
+}
+
 
 
         // Call loadStocks when the page loads
