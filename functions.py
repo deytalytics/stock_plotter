@@ -5,6 +5,7 @@ import plotly.graph_objs as go
 import plotly.offline as pyo
 import pandas as pd, os, datetime
 import yfinance as yf
+import json
 
 
 def connect_db(user=None):
@@ -151,7 +152,33 @@ def precalculate_returns(market_stocks, stock_price_history, time_periods):
 
     return precalculated_cumulative_returns, precalculated_yoy_returns
 
+def save_returns(engine, tablename, colname, returns):
 
+    # Convert the JSON data to a list of dictionaries
+    data_list = [{'stock_symbol': k, 'year': i, colname: v} for k, values in returns.items() for i, v in
+                 enumerate(values, start=1)]
+
+    # Convert the list to a pandas DataFrame
+    df = pd.DataFrame(data_list)
+
+    # Write the DataFrame to your PostgreSQL table overwriting any previously saved cumulative returns
+    df.to_sql(tablename, engine, if_exists='replace', schema="stockplot", index=False)
+
+def load_returns(engine,tablename, colname):
+
+    # Query the data into a DataFrame
+    df = pd.read_sql(f'SELECT * FROM stockplot.{tablename}', engine)
+
+    # Group by stock_symbol and apply list to colname
+    df_grouped = df.groupby('stock_symbol')[colname].apply(list)
+
+    # Convert the grouped DataFrame to a dictionary
+    data_dict = df_grouped.to_dict()
+
+    # Convert the dictionary to a JSON string
+    data_json = json.dumps(data_dict)
+
+    return data_json
 
 def load_stock_data(engine, market_stocks):
     time_periods = {f"{i}y": i for i in range(1, 26)}
@@ -159,8 +186,9 @@ def load_stock_data(engine, market_stocks):
     user_stocks = load_all_user_stocks(engine)
     print("Loading stock price history")
     stock_price_history = load_stock_price_history(engine)
-    print("Precalculating cumulative and year on year returns")
-    cumulative_returns, yoy_returns = precalculate_returns(market_stocks, stock_price_history, time_periods)
+    print("Loading cumulative and year on year returns")
+    cumulative_returns = json.loads(load_returns(engine,'cumulative_returns','cumulative_return'))
+    yoy_returns = json.loads(load_returns(engine,'yoy_returns','yoy_return'))
     print("Stocks, price history and precalculated_returns all loaded")
     return user_stocks, stock_price_history, cumulative_returns, yoy_returns
 

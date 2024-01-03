@@ -253,10 +253,14 @@ def stock_refresh():
 @app.route('/daily_refresh')
 def daily_refresh():
     global stock_price_history, cumlative_returns, yoy_returns
+    time_periods = {f"{i}y": i for i in range(1, 26)}
     engine = connect_db()
     market_stocks = load_market_stocks(engine)
     retmsg = daily_refresh_stocks(engine, market_stocks)
-    user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
+    stock_price_history = load_stock_price_history(engine)
+    cumulative_returns, yoy_returns = precalculate_returns(market_stocks, stock_price_history, time_periods)
+    save_returns(engine, 'cumulative_returns', 'cumulative_return', cumulative_returns)
+    save_returns(engine, 'yoy_returns', 'yoy_return', yoy_returns)
     return retmsg
 
 @app.route('/refresh_returns')
