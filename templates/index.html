@@ -7,18 +7,20 @@
 <body>
     {% include 'header.html' %}
     <div class="body">
-        <img src="https://www.sethlevine.com/wp-content/uploads/welcome.jpg" height = 200px>
-        <p>This app is pitched at long term investors who are interested in seeing performance returns for 1 or more stocks over a max 25 year period</p>
-        <p>Currently, the stocks are confined to the UK FTSE 100, DAX and the S&P500 stocks only</p>
-        <p>The information is pulled from <a href="https://finance.yahoo.com/quote/%5EFTSE?p=%5EFTSE">Yahoo Finance</a>. Please verify the data for yourself</p>
-        <p>The <a href="/plot">Plot</a> provided shows the stock return for each year (up to 25 years) between:-
-            <li>Close on the last trading date</li>
-            <li>Close on the last trading date 1 year, 2 year....25 years prior</li>
-        </p>
-        <p>The stock return for a specific period is calculated as:-
-            <p><code>[Stock price at close on last trading date] - [Stock price at close on last trading date x years prior]/[Stock price at close on last trading date x years prior]</code></p>
-        <p>For example, if JD Sports was priced at 148.2 at close of business on 29th November 2023 and was priced at 125.70 at close of business on 29th November 2022 then it's 1 year return is calculated as</p>
-        <p><code>JD Sports 1 year return = 100*((148.2-125.7)/125.7) = 17.90%</code></p>
+        <img src="/static/welcome.png" height = 200px>
+        <p><br>This website is a <b>proof of concept</b> pitched at long term investors who are interested in seeing performance returns for 1 or more stocks over a max 25 year period</p>
+        Currently, the stocks are confined to the UK FTSE 100, DAX and the S&P500 stocks only.
+        The information is pulled from <a href="https://finance.yahoo.com/quote/%5EFTSE?p=%5EFTSE">Yahoo Finance</a>.
+
+        <p>From the hamburger menu you will find the following functionality:-
+            <li><a href="/plot">Plot</a> shows the cumulative stock return for each year (up to 25 years) e.g 10 years = the percentage increase since latest trading days and last trading day 10 years ago.
+            <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;On this page, if you login (using Google Authentication), you are also able to save your stocks</li>
+            <li><a href="/reports">Reports<a> provides pre-canned reports which might be of use to an investor. Currently allows you to view the cumulative stock returns (for all included stocks) over x years </a></li>
+            <li><a href="/sql">SQL</a> allows an authenticated user to write their own queries and obtain resultsets (either displayed as searchable, sortable html tables or downloadable as CSV)</li>
+            <li><a href="/blog">Blog</a> provides help information for the website and articles that may assist long term investors in identifying high quality stocks</li>
+            <li><a href="/legal">Legal</a> provides legal terms & conditions</li>
+            <li><a href="/chat">Chat</a> has been trained on the Blog articles and you can ask it for any info contained within using natural language</li>
+            <p><br><img src="/static/disclaimer.png" height = 292px>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
