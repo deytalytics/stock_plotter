@@ -38,6 +38,28 @@
         left: 0;
         background: white;
         }
+
+        .collapsible {
+    cursor: pointer;
+    padding: 5px;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+}
+
+.active, .collapsible:hover {
+    background-color: #555;
+    color: white;
+}
+
+.content {
+    padding: 0 18px;
+    display: none;
+    overflow: hidden;
+    background-color: #f1f1f1;
+}
+
     </style>
     <script>
 var lastSortedColumn = null;
@@ -170,8 +192,12 @@ function sortYoYTable(n, initialSort = false) {
         Login to save your selected stocks to your portfolio
         {% endif %}
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-        <br>The table below shows the annual cumulative performance (in percentage terms) for up to the last 25 years for each selected stock. Click on hyperlink to view company fundamentals. Scroll right to see more yearly returns, if necessary<br>
     </div>
+
+    <br>Expand the sections below to see the cumulative and/or Year on Year stock percentage returns:-
+    <div class="collapsible">+ Cumulative</div>
+    <div class="content">
+                The table below shows the annual cumulative performance (in percentage terms) for up to the last 25 years for each selected stock. Click on hyperlink to view company fundamentals. Scroll right to see more yearly returns, if necessary<br>
     <div class="scrollable">
         <table id="myTable">
             <thead>
@@ -205,7 +231,10 @@ function sortYoYTable(n, initialSort = false) {
             </tbody>
         </table>
     </div>
+    </div>
     <p></p>
+    <div class="collapsible">+ Year on Year</div>
+    <div class="content">
     <br>The table below shows the Year on Year performance (in percentage terms) for up to the last 25 years for each selected stock. Click on hyperlink to view company fundamentals. Scroll right to see more yearly returns, if necessary<br>
     <div class="scrollable">
         <table id="myYoYTable">
@@ -239,6 +268,8 @@ function sortYoYTable(n, initialSort = false) {
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+    </div>
     </div>
 
     <script>
@@ -311,6 +342,23 @@ function loadStocks(market, selectedStock) {
         sortTable(10,true)
         /* sort the YoY return Table on Year 1 performance */
         sortYoYTable(1,true)
+
+        var coll = document.getElementsByClassName("collapsible");
+        var i;
+
+        for (i = 0; i < coll.length; i++) {
+            coll[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                var content = this.nextElementSibling;
+                if (content.style.display === "block") {
+                    content.style.display = "none";
+                    this.textContent = '+ ' + this.textContent.slice(2);
+                } else {
+                    content.style.display = "block";
+                    this.textContent = '- ' + this.textContent.slice(2);
+                }
+            });
+        }
     </script>
 
 </body>
