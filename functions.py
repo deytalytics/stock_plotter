@@ -85,45 +85,85 @@ def load_stock_price_history(engine):
 
     return stock_price_history
 
-def precalculate_returns(stock_price_history, time_periods):
-    # Create a dictionary to store the pre-calculated returns for each stock
-    precalculated_returns = {}
+def precalculate_returns(market_stocks, stock_price_history, time_periods):
+    # Create dictionaries to store the pre-calculated cumulative and YoY returns for each stock
+    precalculated_cumulative_returns = {}
+    precalculated_yoy_returns = {}
 
-    # Loop over all unique stocks in the stock_price_history
-    for stock in stock_price_history['stock_symbol'].unique():
-        # Filter the data for the specific stock
-        stock_data = stock_price_history[stock_price_history['stock_symbol'] == stock]
+    for market in market_stocks:
+        # Loop over all market_stocks
+        for stock in market_stocks[market]:
+            # Filter the data for the specific stock
+            stock_data = stock_price_history[stock_price_history['stock_symbol'] == stock]
 
-        # Get the latest date for the stock
-        max_date = stock_data['reported_date'].max()
+            # Get the latest date for the stock
+            max_date = stock_data['reported_date'].max()
 
-        # Create an array to store the returns for this stock
-        stock_returns = []
+            # Create arrays to store the returns for this stock
+            stock_cumulative_returns = []
+            stock_yoy_returns = []
 
-        # Loop over all time periods
-        for period, years in time_periods.items():
-            # Get the data for the latest reported date
-            latest_data = stock_data[stock_data['reported_date'] == max_date]
+            # Loop over all time periods
+            for period, years in time_periods.items():
+                # Get the data for the latest reported date
+                latest_data = stock_data[stock_data['reported_date'] == max_date]
 
-            # Get the data for the reported date x years ago or the closest prior trading day
-            prior_date = max_date - pd.DateOffset(years=years)
-            prior_data = stock_data[stock_data['reported_date'] <= prior_date].sort_values('reported_date').tail(1)
+                # Get the data for the reported date x years ago or the closest prior trading day
+                prior_date = max_date - pd.DateOffset(years=years)
+                prior_data = stock_data[stock_data['reported_date'] <= prior_date].sort_values('reported_date').tail(1)
 
-            # Combine the latest and prior data
-            period_data = pd.concat([prior_data, latest_data])
+                # Combine the latest and prior data
+                period_data = pd.concat([prior_data, latest_data])
 
-            if len(period_data) > 1:  # Check if both latest and prior data are available
-                percentage_return = round(
-                    (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[0] * 100,
-                    2)
-                stock_returns.append(percentage_return)
-            else:
-                stock_returns.append(None)
+                if len(period_data) > 1:  # Check if both latest and prior data are available
+                    percentage_return = round(
+                        (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[0] * 100,
+                        2)
+                    stock_cumulative_returns.append(percentage_return)
+                else:
+                    stock_cumulative_returns.append(None)
 
-        # Store the returns for this stock in the precalculated_returns dictionary
-        precalculated_returns[stock] = stock_returns
+                # Calculate YoY returns
+                if years > 1:
 
-    return precalculated_returns
+                    # Get the data for the reported date x-1 years ago or the closest prior trading day
+                    prior_date_yoy = max_date - pd.DateOffset(years=years - 1)
+                    prior_data_yoy = stock_data[stock_data['reported_date'] <= prior_date_yoy].sort_values(
+                        'reported_date').tail(1)
+
+                    # Combine the prior_data_yoy and prior data
+                    period_data = pd.concat([prior_data, prior_data_yoy])
+
+                    if len(period_data) > 1:  # Check if both prior_data_yoy and prior data are available
+                        percentage_return = round(
+                            (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[
+                                0] * 100,
+                            2)
+                        stock_yoy_returns.append(percentage_return)
+                    else:
+                        stock_yoy_returns.append(None)
+                elif years == 1:  # For the first year, YoY return is the same as the cumulative return
+                    stock_yoy_returns.append(stock_cumulative_returns[-1])
+
+            # Store the returns for this stock in the precalculated_returns dictionaries
+            precalculated_cumulative_returns[stock] = stock_cumulative_returns
+            precalculated_yoy_returns[stock] = stock_yoy_returns
+
+    return precalculated_cumulative_returns, precalculated_yoy_returns
+
+
+
+def load_stock_data(engine, market_stocks):
+    time_periods = {f"{i}y": i for i in range(1, 26)}
+    print("Loading user stocks")
+    user_stocks = load_all_user_stocks(engine)
+    print("Loading stock price history")
+    stock_price_history = load_stock_price_history(engine)
+    print("Precalculating cumulative and year on year returns")
+    cumulative_returns, yoy_returns = precalculate_returns(market_stocks, stock_price_history, time_periods)
+    print("Stocks, price history and precalculated_returns all loaded")
+    return user_stocks, stock_price_history, cumulative_returns, yoy_returns
+
 
 def fetch_last_refresh_timestamp():
     engine = connect_db()
@@ -302,13 +342,4 @@ def refresh_stock(engine, symbol):
     except Exception as e:
         return str(e)
 
-def load_stock_data(engine):
-    time_periods = {f"{i}y": i for i in range(1, 26)}
-    print("Loading user stocks")
-    user_stocks = load_all_user_stocks(engine)
-    print("Loading stock price history")
-    stock_price_history = load_stock_price_history(engine)
-    print("Precalculating returns")
-    precalculated_returns = precalculate_returns(stock_price_history, time_periods)
-    print("Stocks, price history and precalculated_returns all loaded")
-    return user_stocks, stock_price_history, precalculated_returns
+

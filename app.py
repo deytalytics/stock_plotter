@@ -28,7 +28,7 @@ def create_app():
 engine = connect_db()
 market_stocks = load_market_stocks(engine)
 
-user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
+user_stocks, stock_price_history, cumulative_returns, yoy_returns  = load_stock_data(engine, market_stocks)
 
 oauth = OAuth()
 app = create_app()
@@ -94,8 +94,8 @@ def query():
         error_message = str(e)
         return error_message
 
-@app.route('/performance', methods=['GET'])
-def performance():
+@app.route('/cumulative', methods=['GET'])
+def cumulative():
     # Get the 'years' parameter from the request
     years = int(request.args.get('years'))
     username = get_username(session)
@@ -105,7 +105,7 @@ def performance():
 
         # Iterate over the dictionary
         for market, stocks in market_stocks.items():
-            for stock_symbol, returns in precalculated_returns.items():
+            for stock_symbol, returns in cumulative_returns.items():
                 if stock_symbol in stocks:
                     # Fetch the x cumulative annual return
                     percentage_increase = returns[years-1]
@@ -134,12 +134,57 @@ def performance():
             return response
         elif export_format == 'html':
             keys_order = list(data[0].keys())
-            return render_template('resultset.html', report_title = f"{years} year performance", user=username, data=data, keys_order = keys_order)
+            return render_template('resultset.html', report_title = f"{years} year performance (cumulative)", user=username, data=data, keys_order = keys_order)
 
     except ProgrammingError as e:
         error_message = str(e)
         return error_message
 
+@app.route('/yearonyear', methods=['GET'])
+def yearonyear():
+    # Get the 'years' parameter from the request
+    years = int(request.args.get('years'))
+    username = get_username(session)
+    try:
+        # Initialize an empty list to hold the new dictionaries
+        data = []
+
+        # Iterate over the dictionary
+        for market, stocks in market_stocks.items():
+            for stock_symbol, returns in yoy_returns.items():
+                if stock_symbol in stocks:
+                    # Fetch the x cumulative annual return
+                    percentage_increase = returns[years-1]
+
+                    # Construct the new dictionary and append it to the list
+                    data.append({
+                        'stock_symbol': stock_symbol,
+                        'stock_name': stocks[stock_symbol]['stock_name'],
+                        'industry_name': stocks[stock_symbol]['industry_name'],
+                        'percentage_increase': percentage_increase
+                    })
+
+        # Filter out dictionaries where 'percentage_increase' is None
+        data = [d for d in data if d['percentage_increase'] is not None]
+
+        # Sort the data list by 'percentage_increase' in descending order
+        data = sorted(data, key=lambda x: x['percentage_increase'], reverse=True)
+
+        # Export the result to CSV or HTML format
+        export_format = 'html'
+
+        if export_format == 'csv':
+            response = make_response(df.to_csv(index=False))
+            response.headers['Content-Disposition'] = 'attachment; filename=result.csv'
+            response.headers['Content-Type'] = 'text/csv'
+            return response
+        elif export_format == 'html':
+            keys_order = list(data[0].keys())
+            return render_template('resultset.html', report_title = f"Year {years - 1} to Year {years} annual return", user=username, data=data, keys_order = keys_order)
+
+    except ProgrammingError as e:
+        error_message = str(e)
+        return error_message
 
 @app.route('/save_query', methods=['POST'])
 def save_query():
@@ -187,38 +232,38 @@ def delete_query():
 
 @app.route('/full_refresh')
 def full_refresh():
-    global stock_price_history, precalculated_returns
+    global stock_price_history, cumulative_returns, yoy_returns
     engine = connect_db()
     market_stocks = load_market_stocks(engine)
     retmsg = refresh_stocks(engine, market_stocks)
     if retmsg=="Stocks refreshed":
-        user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
+        user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
     return retmsg
 
 @app.route('/refresh_stock')
 def stock_refresh():
-    global stock_price_history, precalculated_returns
+    global stock_price_history, cumulative_returns, yoy_returns
     symbol = request.args.get('ticker', type = str)
     engine = connect_db()
     retmsg = refresh_stock(engine, symbol)
-    user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
+    user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
     return retmsg
 
 
 @app.route('/daily_refresh')
 def daily_refresh():
-    global stock_price_history, precalculated_returns
+    global stock_price_history, cumlative_returns, yoy_returns
     engine = connect_db()
     market_stocks = load_market_stocks(engine)
     retmsg = daily_refresh_stocks(engine, market_stocks)
-    user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
+    user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
     return retmsg
 
 @app.route('/refresh_returns')
 def refresh_returns():
-    global stock_price_history, precalculated_returns
+    global stock_price_history, cumulative_returns, yoy_returns
     engine = connect_db()
-    user_stocks, stock_price_history, precalculated_returns = load_stock_data(engine)
+    user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
     return "Stock price history refreshed from database and precalculated returns recalculated "
 
 @app.route('/blog')
@@ -234,7 +279,8 @@ def legal():
 
 @app.route('/plot',methods=['GET','POST'])
 def get_stocks_returns():
-    returns={}
+    user_cumulative_returns={}
+    user_yoy_returns={}
     global user_stocks
     #Either use the selected stock market or default to sp500 if there isn't one
     selected_market = request.form.get('market', 'sp500')
@@ -274,7 +320,8 @@ def get_stocks_returns():
     email = get_email(session)
     for stock in user_stocks:
         if stock[0]==email:
-            returns[stock[1]] = precalculated_returns[stock[1]]
+            user_cumulative_returns[stock[1]] = cumulative_returns[stock[1]]
+            user_yoy_returns[stock[1]] = yoy_returns[stock[1]]
 
     # Initialize empty dictionaries for each market
     ftse100_stocks = {}
@@ -291,9 +338,9 @@ def get_stocks_returns():
             sp500_stocks = stocks
 
     #load the plot data
-    plot_div = load_plots(returns, ftse100_stocks, dax_stocks, sp500_stocks)
+    plot_div = load_plots(user_cumulative_returns, ftse100_stocks, dax_stocks, sp500_stocks)
 
-    return render_template('stocks.html', user = get_username(session), ftse100_stocks=ftse100_stocks, dax_stocks=dax_stocks, sp500_stocks=sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, returns=returns)
+    return render_template('stocks.html', user = get_username(session), ftse100_stocks=ftse100_stocks, dax_stocks=dax_stocks, sp500_stocks=sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, yoy_returns = user_yoy_returns, cumulative_returns=user_cumulative_returns)
 
 @app.route('/login')
 def login():
