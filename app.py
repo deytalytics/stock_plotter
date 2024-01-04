@@ -140,8 +140,8 @@ def cumulative():
         error_message = str(e)
         return error_message
 
-@app.route('/yearonyear', methods=['GET'])
-def yearonyear():
+@app.route('/positiveyears', methods=['GET'])
+def positiveyears():
     # Get the 'years' parameter from the request
     years = int(request.args.get('years'))
     username = get_username(session)
@@ -153,22 +153,20 @@ def yearonyear():
         for market, stocks in market_stocks.items():
             for stock_symbol, returns in yoy_returns.items():
                 if stock_symbol in stocks:
-                    # Fetch the x cumulative annual return
-                    percentage_increase = returns[years-1]
+                    # Limit the years to check
+                    returns = returns[:years]
+                    positive_years = len([year for year in returns if year > 0])
 
                     # Construct the new dictionary and append it to the list
                     data.append({
                         'stock_symbol': stock_symbol,
                         'stock_name': stocks[stock_symbol]['stock_name'],
                         'industry_name': stocks[stock_symbol]['industry_name'],
-                        'percentage_increase': percentage_increase
+                        'positive_years': positive_years
                     })
 
-        # Filter out dictionaries where 'percentage_increase' is None
-        data = [d for d in data if d['percentage_increase'] is not None]
-
         # Sort the data list by 'percentage_increase' in descending order
-        data = sorted(data, key=lambda x: x['percentage_increase'], reverse=True)
+        data = sorted(data, key=lambda x: x['positive_years'], reverse=True)
 
         # Export the result to CSV or HTML format
         export_format = 'html'
@@ -180,7 +178,7 @@ def yearonyear():
             return response
         elif export_format == 'html':
             keys_order = list(data[0].keys())
-            return render_template('resultset.html', report_title = f"Year {years - 1} to Year {years} annual return", user=username, data=data, keys_order = keys_order)
+            return render_template('resultset.html', report_title = f"Number of years of positive stock market gains in {years} years", user=username, data=data, keys_order = keys_order)
 
     except ProgrammingError as e:
         error_message = str(e)

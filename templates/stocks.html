@@ -195,8 +195,7 @@ function sortYoYTable(n, initialSort = false) {
     </div>
 
     <br>Expand the sections below to see the cumulative and/or Year on Year stock percentage returns:-
-    <div class="collapsible">+ Cumulative</div>
-    <div class="content">
+    <details><summary>Cumulative</summary>
                 The table below shows the annual cumulative performance (in percentage terms) for up to the last 25 years for each selected stock. Click on hyperlink to view company fundamentals. Scroll right to see more yearly returns, if necessary<br>
     <div class="scrollable">
         <table id="myTable">
@@ -230,11 +229,8 @@ function sortYoYTable(n, initialSort = false) {
                 {% endfor %}
             </tbody>
         </table>
-    </div>
-    </div>
-    <p></p>
-    <div class="collapsible">+ Year on Year</div>
-    <div class="content">
+    </details>
+    <details open><summary>Year on Year</summary>
     <br>The table below shows the Year on Year performance (in percentage terms) for up to the last 25 years for each selected stock. Click on hyperlink to view company fundamentals. Scroll right to see more yearly returns, if necessary<br>
     <div class="scrollable">
         <table id="myYoYTable">
@@ -269,8 +265,7 @@ function sortYoYTable(n, initialSort = false) {
             </tbody>
         </table>
     </div>
-    </div>
-    </div>
+    </details>
 
     <script>
         // Store the stocks in JavaScript variables
