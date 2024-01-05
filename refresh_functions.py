@@ -164,6 +164,24 @@ def save_min_max_changes(engine):
         connection.execute(text(query))
         connection.commit()
 
+def save_stock_highs(engine):
+    # Execute the query
+    with engine.connect() as connection:
+        connection.execute(text("truncate table stockplot.stock_highs"))
+        query = f"""
+insert into stockplot.stock_highs        
+select s.stock_symbol,ms.stock_name,ms.industry_name, s.high, s.reported_date
+from stockplot.stock_price_history s
+join (
+  select stock_symbol, max(high) as max_high
+  from stockplot.stock_price_history
+  group by stock_symbol
+) m on s.stock_symbol = m.stock_symbol and s.high = m.max_high
+join stockplot.market_stocks ms on ms.stock_symbol = s.stock_symbol
+        """
+        connection.execute(text(query))
+        connection.commit()
+
 def refresh_data(engine, market_stocks, time_periods):
     print("Pulling stock prices from Yahoo Finance")
     daily_refresh_stocks(engine, market_stocks)
@@ -176,6 +194,8 @@ def refresh_data(engine, market_stocks, time_periods):
     save_returns(engine, 'yoy_returns', 'yoy_return', yoy_returns)
     print("saving min & max daily changes")
     save_min_max_changes(engine)
+    print("saving stock highs")
+    save_stock_highs(engine)
     print("All daily data refreshed")
 
 

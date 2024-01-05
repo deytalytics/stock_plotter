@@ -27,3 +27,10 @@ def load_min_max_changes(engine):
 
     return df
 
+def load_stock_highs(engine):
+
+    # Query the data into a DataFrame
+    df = pd.read_sql(f"SELECT stock_symbol,stock_name, to_char(reported_date,'YYYY-MM-DD') as reported_date, round(high::numeric,2) as high  FROM stockplot.stock_highs order by to_char(reported_date,'YYYY-MM-DD') desc", engine)
+
+    return df
+

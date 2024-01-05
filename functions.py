@@ -57,8 +57,10 @@ def load_stock_data(engine):
     yoy_returns = json.loads(load_returns(engine,'yoy_returns','yoy_return'))
     print("Loading stock min & max daily changes")
     min_max_changes = load_min_max_changes(engine)
+    print("Loading stock highs")
+    stock_highs = load_stock_highs(engine)
     print("Stocks, price history and precalculated_returns all loaded")
-    return user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes
+    return user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes, stock_highs
 
 
 #Create the plot for all of the stocks in the stock portfolio
