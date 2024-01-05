@@ -180,7 +180,46 @@ def load_returns(engine,tablename, colname):
 
     return data_json
 
-def load_stock_data(engine, market_stocks):
+def save_min_max_changes(engine):
+    # Execute the query
+    with engine.connect() as connection:
+        connection.execute(text("truncate table stockplot.min_max_changes"))
+        query = f"""
+        with daily_change as (
+        select stock_symbol, reported_date, close,
+        lag(close,1,0) over (partition by stock_symbol order by reported_date) as prev_close
+        from stockplot.stock_price_history),
+        pct_daily_change as (
+        select stock_symbol, reported_date, close, prev_close,
+        100*(close - prev_close)/prev_close as change
+        from daily_change
+        where prev_close<> 0)
+        insert into stockplot.min_max_changes
+        select stock_symbol, reported_date, close, prev_close, change as min_max_daily_change 
+        from pct_daily_change
+        where (stock_symbol, change) in (
+            select stock_symbol, max(change) 
+            from pct_daily_change
+            where reported_date <> '2022-06-15'
+            group by stock_symbol)
+        or (stock_symbol, change) in (
+            select stock_symbol, min(change) 
+            from pct_daily_change
+            where reported_date <> '2022-06-14'
+            group by stock_symbol)
+        """
+        connection.execute(text(query))
+        connection.commit()
+
+
+def load_min_max_changes(engine):
+
+    # Query the data into a DataFrame
+    df = pd.read_sql(f"SELECT stock_symbol,to_char(reported_date,'YYYY-MM-DD') as reported_date, close, prev_close, min_max_daily_change FROM stockplot.min_max_changes", engine)
+
+    return df
+
+def load_stock_data(engine):
     time_periods = {f"{i}y": i for i in range(1, 26)}
     print("Loading user stocks")
     user_stocks = load_all_user_stocks(engine)
@@ -189,8 +228,10 @@ def load_stock_data(engine, market_stocks):
     print("Loading cumulative and year on year returns")
     cumulative_returns = json.loads(load_returns(engine,'cumulative_returns','cumulative_return'))
     yoy_returns = json.loads(load_returns(engine,'yoy_returns','yoy_return'))
+    print("Loading stock min & max daily changes")
+    min_max_changes = load_min_max_changes(engine)
     print("Stocks, price history and precalculated_returns all loaded")
-    return user_stocks, stock_price_history, cumulative_returns, yoy_returns
+    return user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes
 
 
 def fetch_last_refresh_timestamp():
@@ -267,50 +308,6 @@ def load_market_stocks(engine):
 
     return jsons
 
-def download_and_insert(stock_dict):
-    all_data = pd.DataFrame()
-    for symbol, company in stock_dict.items():
-        try:
-            # Download the stock data
-            data = yf.download(symbol, period='max')
-            data = data.reset_index()
-
-            # Add the stock symbol as a column
-            data['stock_symbol'] = symbol
-            data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
-
-            # Append the data to the all_data DataFrame
-            all_data = pd.concat([all_data, data], ignore_index=True)
-        except Exception as e:
-            print(str(e))
-
-    # Insert all_data into the database
-    try:
-        engine = connect_db()
-        all_data.to_sql('stock_price_history', engine, if_exists='append', schema='stockplot', index=False, method='multi', chunksize=5000)
-    except Exception as e:
-        print(str(e))
-
-def refresh_stocks(engine, market_stocks):
-    try:
-        print("truncating stock_price_history")
-        delete_qry = f"TRUNCATE TABLE stockplot.stock_price_history"
-        # Delete the entries for the current day
-        with engine.begin() as connection:
-            connection.execute(text(delete_qry))
-            connection.commit()
-
-        # Download and insert the data in parallel
-        with Pool() as pool:
-            pool.map(download_and_insert, [market_stocks])
-
-        set_last_refresh_timestamp()
-        last_refresh_timestamp = fetch_last_refresh_timestamp()
-
-        # Store the data in PostgreSQL
-        return f"Stocks refreshed at { last_refresh_timestamp }"
-    except Exception as e:
-        return str(e)
 
 def daily_refresh_stocks(engine, market_stocks):
     try:

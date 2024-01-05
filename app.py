@@ -28,7 +28,7 @@ def create_app():
 engine = connect_db()
 market_stocks = load_market_stocks(engine)
 
-user_stocks, stock_price_history, cumulative_returns, yoy_returns  = load_stock_data(engine, market_stocks)
+user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes = load_stock_data(engine)
 
 oauth = OAuth()
 app = create_app()
@@ -184,6 +184,27 @@ def positiveyears():
         error_message = str(e)
         return error_message
 
+@app.route('/max_min_changes', methods=['GET'])
+def max_min_changes():
+    username = get_username(session)
+    try:
+        df = min_max_changes
+        # Export the result to CSV or HTML format
+        export_format = 'html'
+
+        if export_format == 'csv':
+            response = make_response(df.to_csv(index=False))
+            response.headers['Content-Disposition'] = 'attachment; filename=result.csv'
+            response.headers['Content-Type'] = 'text/csv'
+            return response
+        elif export_format == 'html':
+            keys_order = list(df.columns)
+            return render_template('resultset.html', report_title = f"Max & Min daily changes per stock", user=username, data=df.to_dict('records'), keys_order = keys_order)
+
+    except ProgrammingError as e:
+        error_message = str(e)
+        return error_message
+
 @app.route('/save_query', methods=['POST'])
 def save_query():
     data = request.get_json()
@@ -228,25 +249,14 @@ def delete_query():
     except Exception as e:
         return jsonify(success=False, error=str(e))
 
-@app.route('/full_refresh')
-def full_refresh():
-    global stock_price_history, cumulative_returns, yoy_returns
-    engine = connect_db()
-    market_stocks = load_market_stocks(engine)
-    retmsg = refresh_stocks(engine, market_stocks)
-    if retmsg=="Stocks refreshed":
-        user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
-    return retmsg
-
 @app.route('/refresh_stock')
 def stock_refresh():
     global stock_price_history, cumulative_returns, yoy_returns
     symbol = request.args.get('ticker', type = str)
     engine = connect_db()
     retmsg = refresh_stock(engine, symbol)
-    user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
+    user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes = load_stock_data(engine)
     return retmsg
-
 
 @app.route('/daily_refresh')
 def daily_refresh():
@@ -257,15 +267,19 @@ def daily_refresh():
     retmsg = daily_refresh_stocks(engine, market_stocks)
     stock_price_history = load_stock_price_history(engine)
     cumulative_returns, yoy_returns = precalculate_returns(market_stocks, stock_price_history, time_periods)
+    print("saving cumulative returns")
     save_returns(engine, 'cumulative_returns', 'cumulative_return', cumulative_returns)
+    print("saving year on year returns")
     save_returns(engine, 'yoy_returns', 'yoy_return', yoy_returns)
+    print("saving min & max daily changes")
+    save_min_max_changes(engine)
     return retmsg
 
 @app.route('/refresh_returns')
 def refresh_returns():
     global stock_price_history, cumulative_returns, yoy_returns
     engine = connect_db()
-    user_stocks, stock_price_history, cumulative_returns, yoy_returns = load_stock_data(engine, market_stocks)
+    user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes = load_stock_data(engine)
     return "Stock price history refreshed from database and precalculated returns recalculated "
 
 @app.route('/blog')
