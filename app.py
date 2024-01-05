@@ -115,16 +115,15 @@ def cumulative():
                     # Fetch the x cumulative annual return
                     percentage_increase = returns[years-1]
 
-                    # Construct the new dictionary and append it to the list
-                    data.append({
-                        'stock_symbol': stock_symbol,
-                        'stock_name': stocks[stock_symbol]['stock_name'],
-                        'industry_name': stocks[stock_symbol]['industry_name'],
-                        'percentage_increase': percentage_increase
-                    })
+                    if percentage_increase is not None and str(percentage_increase).lower() != 'nan':
 
-        # Filter out dictionaries where 'percentage_increase' is None
-        data = [d for d in data if d['percentage_increase'] is not None]
+                        # Construct the new dictionary and append it to the list
+                        data.append({
+                            'stock_symbol': stock_symbol,
+                            'stock_name': stocks[stock_symbol]['stock_name'],
+                            'industry_name': stocks[stock_symbol]['industry_name'],
+                            'percentage_increase': percentage_increase
+                        })
 
         # Sort the data list by 'percentage_increase' in descending order
         data = sorted(data, key=lambda x: x['percentage_increase'], reverse=True)
