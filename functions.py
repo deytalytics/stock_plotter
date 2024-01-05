@@ -1,12 +1,10 @@
-from sqlalchemy import create_engine, text, Table, MetaData, select
-from sqlalchemy.orm import sessionmaker
-from multiprocessing import Pool
 import plotly.graph_objs as go
 import plotly.offline as pyo
-import pandas as pd, os, datetime
-import yfinance as yf
-import json
+import os
 
+from reports_functions import *
+from refresh_functions import *
+from sqlalchemy import create_engine, text
 
 def connect_db(user=None):
     if user is None:
@@ -86,139 +84,6 @@ def load_stock_price_history(engine):
 
     return stock_price_history
 
-def precalculate_returns(market_stocks, stock_price_history, time_periods):
-    # Create dictionaries to store the pre-calculated cumulative and YoY returns for each stock
-    precalculated_cumulative_returns = {}
-    precalculated_yoy_returns = {}
-
-    for market in market_stocks:
-        # Loop over all market_stocks
-        for stock in market_stocks[market]:
-            # Filter the data for the specific stock
-            stock_data = stock_price_history[stock_price_history['stock_symbol'] == stock]
-
-            # Get the latest date for the stock
-            max_date = stock_data['reported_date'].max()
-
-            # Create arrays to store the returns for this stock
-            stock_cumulative_returns = []
-            stock_yoy_returns = []
-
-            # Loop over all time periods
-            for period, years in time_periods.items():
-                # Get the data for the latest reported date
-                latest_data = stock_data[stock_data['reported_date'] == max_date]
-
-                # Get the data for the reported date x years ago or the closest prior trading day
-                prior_date = max_date - pd.DateOffset(years=years)
-                prior_data = stock_data[stock_data['reported_date'] <= prior_date].sort_values('reported_date').tail(1)
-
-                # Combine the latest and prior data
-                period_data = pd.concat([prior_data, latest_data])
-
-                if len(period_data) > 1:  # Check if both latest and prior data are available
-                    percentage_return = round(
-                        (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[0] * 100,
-                        2)
-                    stock_cumulative_returns.append(percentage_return)
-                else:
-                    stock_cumulative_returns.append(None)
-
-                # Calculate YoY returns
-                if years > 1:
-
-                    # Get the data for the reported date x-1 years ago or the closest prior trading day
-                    prior_date_yoy = max_date - pd.DateOffset(years=years - 1)
-                    prior_data_yoy = stock_data[stock_data['reported_date'] <= prior_date_yoy].sort_values(
-                        'reported_date').tail(1)
-
-                    # Combine the prior_data_yoy and prior data
-                    period_data = pd.concat([prior_data, prior_data_yoy])
-
-                    if len(period_data) > 1:  # Check if both prior_data_yoy and prior data are available
-                        percentage_return = round(
-                            (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[
-                                0] * 100,
-                            2)
-                        stock_yoy_returns.append(percentage_return)
-                    else:
-                        stock_yoy_returns.append(None)
-                elif years == 1:  # For the first year, YoY return is the same as the cumulative return
-                    stock_yoy_returns.append(stock_cumulative_returns[-1])
-
-            # Store the returns for this stock in the precalculated_returns dictionaries
-            precalculated_cumulative_returns[stock] = stock_cumulative_returns
-            precalculated_yoy_returns[stock] = stock_yoy_returns
-
-    return precalculated_cumulative_returns, precalculated_yoy_returns
-
-def save_returns(engine, tablename, colname, returns):
-
-    # Convert the JSON data to a list of dictionaries
-    data_list = [{'stock_symbol': k, 'year': i, colname: v} for k, values in returns.items() for i, v in
-                 enumerate(values, start=1)]
-
-    # Convert the list to a pandas DataFrame
-    df = pd.DataFrame(data_list)
-
-    # Write the DataFrame to your PostgreSQL table overwriting any previously saved cumulative returns
-    df.to_sql(tablename, engine, if_exists='replace', schema="stockplot", index=False)
-
-def load_returns(engine,tablename, colname):
-
-    # Query the data into a DataFrame
-    df = pd.read_sql(f'SELECT * FROM stockplot.{tablename}', engine)
-
-    # Group by stock_symbol and apply list to colname
-    df_grouped = df.groupby('stock_symbol')[colname].apply(list)
-
-    # Convert the grouped DataFrame to a dictionary
-    data_dict = df_grouped.to_dict()
-
-    # Convert the dictionary to a JSON string
-    data_json = json.dumps(data_dict)
-
-    return data_json
-
-def save_min_max_changes(engine):
-    # Execute the query
-    with engine.connect() as connection:
-        connection.execute(text("truncate table stockplot.min_max_changes"))
-        query = f"""
-        with daily_change as (
-        select stock_symbol, reported_date, close,
-        lag(close,1,0) over (partition by stock_symbol order by reported_date) as prev_close
-        from stockplot.stock_price_history),
-        pct_daily_change as (
-        select stock_symbol, reported_date, close, prev_close,
-        100*(close - prev_close)/prev_close as change
-        from daily_change
-        where prev_close<> 0)
-        insert into stockplot.min_max_changes
-        select stock_symbol, reported_date, close, prev_close, change as min_max_daily_change 
-        from pct_daily_change
-        where (stock_symbol, change) in (
-            select stock_symbol, max(change) 
-            from pct_daily_change
-            where reported_date <> '2022-06-15'
-            group by stock_symbol)
-        or (stock_symbol, change) in (
-            select stock_symbol, min(change) 
-            from pct_daily_change
-            where reported_date <> '2022-06-14'
-            group by stock_symbol)
-        """
-        connection.execute(text(query))
-        connection.commit()
-
-
-def load_min_max_changes(engine):
-
-    # Query the data into a DataFrame
-    df = pd.read_sql(f"SELECT stock_symbol,to_char(reported_date,'YYYY-MM-DD') as reported_date, close, prev_close, min_max_daily_change FROM stockplot.min_max_changes", engine)
-
-    return df
-
 def load_stock_data(engine):
     time_periods = {f"{i}y": i for i in range(1, 26)}
     print("Loading user stocks")
@@ -234,21 +99,8 @@ def load_stock_data(engine):
     return user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes
 
 
-def fetch_last_refresh_timestamp():
-    engine = connect_db()
-    with engine.connect() as connection:
-        result = connection.execute(text("select last_refresh_timestamp from admin.app_info"))
-        row = result.fetchone()
-        return row[0].strftime('%Y-%m-%d %H:%M:%S')
-
-def set_last_refresh_timestamp():
-    engine = connect_db()
-    with engine.connect() as connection:
-        connection.execute(text("update admin.app_info set last_refresh_timestamp = current_timestamp"))
-        connection.commit()
-
 #Create the plot for all of the stocks in the stock portfolio
-def load_plots(returns, ftse100_stocks, dax_stocks, sp500_stocks):
+def load_plots(engine, returns, ftse100_stocks, dax_stocks, sp500_stocks):
     plots = []
     time_periods = {f"{i}y": i for i in range(1, 26)}
     for stock, ret in returns.items():
@@ -260,7 +112,7 @@ def load_plots(returns, ftse100_stocks, dax_stocks, sp500_stocks):
         plots.append(trace)
 
 
-    last_refresh_timestamp = fetch_last_refresh_timestamp()
+    last_refresh_timestamp = fetch_last_refresh_timestamp(engine)
 
     layout = go.Layout(
         title=f'Stock Returns Over Time (last updated { last_refresh_timestamp } for close prices on last trading day)',
@@ -287,9 +139,6 @@ def get_email(session):
         email = None
     return email
 
-
-from sqlalchemy import create_engine, text
-
 def load_market_stocks(engine):
     with engine.connect() as connection:
         result = connection.execute(text("SELECT * FROM stockplot.market_stocks"))
@@ -309,62 +158,6 @@ def load_market_stocks(engine):
     return jsons
 
 
-def daily_refresh_stocks(engine, market_stocks):
-    try:
-        # Create an empty DataFrame to store all the data
-        all_data = pd.DataFrame()
 
-        # Get the date one week ago
-        one_week_ago = datetime.datetime.now() - datetime.timedelta(weeks=1)
-        delete_qry = f"DELETE FROM stockplot.stock_price_history WHERE reported_date >= '{one_week_ago.date()}'"
-        # Delete the entries for the current day
-        with engine.begin() as connection:
-            connection.execute(text(delete_qry))
-
-        for market, stocks in market_stocks.items():
-            for symbol, details in stocks.items():
-                # Download the stock data for the last week
-                print(details['stock_name'])
-                data = yf.download(symbol, start=one_week_ago)
-                data = data.reset_index()
-
-                # Add the stock symbol as a column
-                data['stock_symbol'] = symbol
-                data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
-
-                # Concatenate the new data
-                all_data = pd.concat([all_data, data])
-
-        # Store the data in PostgreSQL
-        all_data.to_sql('stock_price_history', engine, schema='stockplot', if_exists='append', index=False, method='multi',chunksize=5000)
-        set_last_refresh_timestamp()
-        last_refresh_timestamp = fetch_last_refresh_timestamp()
-
-        # Store the data in PostgreSQL
-        return f"Stocks refreshed at {last_refresh_timestamp}"
-    except Exception as e:
-        return str(e)
-
-
-def refresh_stock(engine, symbol):
-    try:
-        # Create an empty DataFrame to store all the data
-        all_data = pd.DataFrame()
-
-        # Download the stock data
-        data = yf.download(symbol, period='max')
-        data = data.reset_index()
-
-        # Add the stock symbol as a column
-        data['stock_symbol'] = symbol
-        data = data.rename(columns={'Date': 'reported_date', 'High': 'high', 'Low':'low', 'Open':'open','Close':'close', 'Adj Close':'adj_close', 'Volume':'volume'})
-        data.to_sql('stock_price_history', engine, if_exists='append', schema='stockplot', index=False, method='multi',chunksize=5000)
-        set_last_refresh_timestamp()
-        last_refresh_timestamp = fetch_last_refresh_timestamp()
-
-        # Store the data in PostgreSQL
-        return f"Stock prices for {symbol} refreshed at { last_refresh_timestamp }"
-    except Exception as e:
-        return str(e)
 
 

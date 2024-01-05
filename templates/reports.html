@@ -41,6 +41,8 @@
 </head>
 <body>
     {% include 'header.html' %}
+    The reports provide data for FTSE 100, DAX and S&P 500 stocks only
+    <br><br>
     Choose from 1 of these pre-canned reports or write your own <a href="/sql">SQL</a>
     <p></p>
 
@@ -58,7 +60,7 @@
         </select>
 
     <a id="positiveyearsLink" href="/positiveyears?years=10">years, how many years produced positive returns?</a></li>
-    <br><li><a href="/max_min_changes">Maximum and minimum stock price daily changes</a></li>
+    <br><li>What have been the <a href="/max_min_changes">Maximum and minimum stock price daily changes</a> per stock and when did they occur?</li>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <br><note>Note: If you go to the <a href="/plot">Plot</a> menu option you can select your stocks and view Cumulative and Year on Year returns up to 25 years ago</note>
 </body>

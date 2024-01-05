@@ -1,6 +1,6 @@
-from flask import Flask, request, session, render_template, redirect, make_response, jsonify, url_for
+from flask import Flask, request, session, render_template, redirect, make_response, jsonify
 from authlib.integrations.flask_client import OAuth
-import uuid, re
+import uuid
 from functions import *
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy import text, and_
@@ -68,7 +68,6 @@ def sql():
     savedQueries = [row for row in result]
 
     return render_template('sql.html', user=username, error = error, sql=sql, savedQueries=savedQueries)
-
 
 @app.route('/query', methods=['POST'])
 def query():
@@ -159,7 +158,7 @@ def positiveyears():
                 if stock_symbol in stocks:
                     # Limit the years to check
                     returns = returns[:years]
-                    positive_years = len([year for year in returns if year > 0])
+                    positive_years = len([year for year in returns if year is not None and year > 0])
 
                     # Construct the new dictionary and append it to the list
                     data.append({
@@ -267,8 +266,12 @@ def daily_refresh():
     global stock_price_history, cumlative_returns, yoy_returns
     time_periods = {f"{i}y": i for i in range(1, 26)}
     engine = connect_db()
+    print("loading stocks")
     market_stocks = load_market_stocks(engine)
+    print("refreshing stock prices from yahoo finance")
     retmsg = daily_refresh_stocks(engine, market_stocks)
+    print(retmsg)
+    print("loading stock_price_history")
     stock_price_history = load_stock_price_history(engine)
     cumulative_returns, yoy_returns = precalculate_returns(market_stocks, stock_price_history, time_periods)
     print("saving cumulative returns")
@@ -358,7 +361,7 @@ def get_stocks_returns():
             sp500_stocks = stocks
 
     #load the plot data
-    plot_div = load_plots(user_cumulative_returns, ftse100_stocks, dax_stocks, sp500_stocks)
+    plot_div = load_plots(engine, user_cumulative_returns, ftse100_stocks, dax_stocks, sp500_stocks)
 
     return render_template('stocks.html', user = get_username(session), ftse100_stocks=ftse100_stocks, dax_stocks=dax_stocks, sp500_stocks=sp500_stocks, plot_div=plot_div, selected_market = selected_market, selected_stock = selected_stock, yoy_returns = user_yoy_returns, cumulative_returns=user_cumulative_returns)
 
