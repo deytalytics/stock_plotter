@@ -1,9 +1,11 @@
+import uuid, threading
+
 from flask import Flask, request, session, render_template, redirect, make_response, jsonify
 from authlib.integrations.flask_client import OAuth
-import uuid
 from functions import *
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy import text, and_
+
 
 def create_app():
 
@@ -261,6 +263,7 @@ def stock_refresh():
     user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes = load_stock_data(engine)
     return retmsg
 
+
 @app.route('/daily_refresh')
 def daily_refresh():
     global stock_price_history, cumlative_returns, yoy_returns
@@ -269,18 +272,12 @@ def daily_refresh():
     print("loading stocks")
     market_stocks = load_market_stocks(engine)
     print("refreshing stock prices from yahoo finance")
-    retmsg = daily_refresh_stocks(engine, market_stocks)
-    print(retmsg)
-    print("loading stock_price_history")
-    stock_price_history = load_stock_price_history(engine)
-    cumulative_returns, yoy_returns = precalculate_returns(market_stocks, stock_price_history, time_periods)
-    print("saving cumulative returns")
-    save_returns(engine, 'cumulative_returns', 'cumulative_return', cumulative_returns)
-    print("saving year on year returns")
-    save_returns(engine, 'yoy_returns', 'yoy_return', yoy_returns)
-    print("saving min & max daily changes")
-    save_min_max_changes(engine)
-    return retmsg
+
+    # Create a new thread for the rest of the function
+    thread = threading.Thread(target=refresh_data, args=(engine, market_stocks, time_periods))
+    thread.start()
+
+    return "Daily refresh has been initiated. Check that refresh has succeeded in 10 minutes by checking data at /plot or /sql"
 
 @app.route('/refresh_returns')
 def refresh_returns():
