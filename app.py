@@ -29,6 +29,10 @@ engine = connect_db()
 market_stocks = load_market_stocks(engine)
 
 user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes = load_stock_data(engine)
+stock_names = {}
+for market in market_stocks:
+    for stock_symbol, stock_info in market_stocks[market].items():
+        stock_names[stock_symbol] = {'stock': stock_info['stock_name'], 'industry' : stock_info['industry_name']}
 
 oauth = OAuth()
 app = create_app()
@@ -89,7 +93,7 @@ def query():
             return response
         elif export_format == 'html':
             keys_order = list(data[0].keys())
-            return render_template('resultset.html', user=username, data=data, keys_order = keys_order)
+            return render_template('resultset.html', user=username, data=data, keys_order = keys_order, stock_names = stock_names)
     except ProgrammingError as e:
         error_message = str(e)
         return error_message
@@ -134,7 +138,7 @@ def cumulative():
             return response
         elif export_format == 'html':
             keys_order = list(data[0].keys())
-            return render_template('resultset.html', report_title = f"{years} year performance (cumulative)", user=username, data=data, keys_order = keys_order)
+            return render_template('resultset.html', report_title = f"{years} year performance (cumulative)", user=username, data=data, keys_order = keys_order, stock_names = stock_names)
 
     except ProgrammingError as e:
         error_message = str(e)
@@ -178,7 +182,7 @@ def positiveyears():
             return response
         elif export_format == 'html':
             keys_order = list(data[0].keys())
-            return render_template('resultset.html', report_title = f"Number of years of positive stock market gains in {years} years", user=username, data=data, keys_order = keys_order)
+            return render_template('resultset.html', report_title = f"Number of years of positive stock market gains in {years} years", user=username, data=data, keys_order = keys_order, stock_names = stock_names)
 
     except ProgrammingError as e:
         error_message = str(e)
@@ -199,7 +203,7 @@ def max_min_changes():
             return response
         elif export_format == 'html':
             keys_order = list(df.columns)
-            return render_template('resultset.html', report_title = f"Max & Min daily changes per stock", user=username, data=df.to_dict('records'), keys_order = keys_order)
+            return render_template('resultset.html', report_title = f"Max & Min daily changes per stock", user=username, data=df.to_dict('records'), keys_order = keys_order, stock_names = stock_names)
 
     except ProgrammingError as e:
         error_message = str(e)

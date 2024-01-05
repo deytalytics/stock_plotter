@@ -41,10 +41,20 @@ button {
 <script>
 // Assume keys_order is passed into the template
 var keys_order = {{ keys_order|tojson|safe }};
+var stock_names = {{ stock_names|tojson|safe }};
 
 // Generate the column definitions
 var columns = keys_order.map(function(key) {
-    return {title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter:true}; // add headerFilter:true to enable header filters
+    var column = {title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter:true};
+    if (key === "stock_symbol") {
+        column.formatter = function(cell) {
+            var value = cell.getValue();
+            var info = stock_names[value] || {};
+            var tooltip = "Stock Name: " + (info.stock || "") + "\nIndustry: " + (info.industry || "");
+            return '<a href="https://finance.yahoo.com/quote/' + value + '" title="' + tooltip + '">' + value + '</a>';
+        };
+    }
+    return column;
 });
 
 var table = new Tabulator("#table", {
