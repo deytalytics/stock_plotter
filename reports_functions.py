@@ -23,7 +23,7 @@ def load_returns(engine,tablename, colname):
 def load_min_max_changes(engine):
 
     # Query the data into a DataFrame
-    df = pd.read_sql(f"SELECT stock_symbol,to_char(reported_date,'YYYY-MM-DD') as reported_date, close, prev_close, min_max_daily_change FROM stockplot.min_max_changes", engine)
+    df = pd.read_sql(f"SELECT stock_symbol,to_char(reported_date,'YYYY-MM-DD') as reported_date, close, prev_close, min_max_daily_change as min_max_pct_daily_change FROM stockplot.min_max_changes", engine)
 
     return df
 

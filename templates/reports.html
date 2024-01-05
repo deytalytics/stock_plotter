@@ -41,29 +41,34 @@
 </head>
 <body>
     {% include 'header.html' %}
-    The reports provide data for FTSE 100, DAX and S&P 500 stocks only
-    <br><br>
-    Choose from 1 of these pre-canned reports or write your own <a href="/sql">SQL</a>
-    <p></p>
-
-    <li>
-        In past
-    <select id="cumulativeyearsSelect" onchange="updateCumulativeLink()">
-        <!-- Options will be added here by JavaScript -->
-    </select>
-    <a id="cumulativeLink" href="/cumulative?years=10">years, how much has the stock price risen in total?</a></li>
-    <br>
-    <li>
-        In past
-        <select id="positiveyearsSelect" onchange="updatePositiveYearsLink()">
-        <!-- Options will be added here by JavaScript -->
-        </select>
-
-    <a id="positiveyearsLink" href="/positiveyears?years=10">years, how many years produced positive returns?</a></li>
-    <br><li>What have been the <a href="/max_min_changes">Maximum and minimum stock price daily changes</a> per stock and when did they occur?</li>
-    <br><li>When was the <a href="/stock_highs">stock price high </a> and how high was it?
-    This option can also give you a feel for the mood of investors if there haven't been any highs recently</li>
+        <p>The reports provide data for FTSE 100, DAX and S&P 500 stocks only. Choose from one of these pre-canned reports or <a href="/sql">write your own SQL</a>.</p>
+        <ul class="list-group">
+            <li class="list-group-item">
+                In past
+                <select id="cumulativeyearsSelect" onchange="updateCumulativeLink()">
+                    <!-- Options will be added here by JavaScript -->
+                </select>
+                <a id="cumulativeLink" href="/cumulative?years=10">years, how much has the stock price risen in total?</a>
+            </li>
+            <li class="list-group-item">
+                In past
+                <select id="positiveyearsSelect" onchange="updatePositiveYearsLink()">
+                    <!-- Options will be added here by JavaScript -->
+                </select>
+                <a id="positiveyearsLink" href="/positiveyears?years=10">years, how many years produced positive returns?</a>
+            </li>
+            <li class="list-group-item">
+                What have been the <a href="/max_min_changes">largest daily gains & losses</a> per stock and when did they occur?
+                <br><small class="text-muted">Note: Some of the large gains/losses look like they're due to glitches in the exchange data - you can verify this on Yahoo finance by clicking through on the stock symbol and looking at what happened near the reported date.</small>
+            </li>
+            <li class="list-group-item">
+                When was the <a href="/stock_highs">stock price high</a> and how high was it?
+                <br><small class="text-muted">This option can also give you a feel for the mood of investors if there haven't been any highs recently.</small>
+            </li>
+        </ul>
+        <div class="alert alert-info mt-3" role="alert">
+            <strong>Note:</strong> If you go to the <a href="/plot">Plot</a> menu option you can select your stocks and view Cumulative and Year on Year returns up to 25 years ago.
+        </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <br><b><note>Note: If you go to the <a href="/plot">Plot</a> menu option you can select your stocks and view Cumulative and Year on Year returns up to 25 years ago</note></b>
 </body>
 </html>

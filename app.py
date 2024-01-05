@@ -204,7 +204,7 @@ def max_min_changes():
             return response
         elif export_format == 'html':
             keys_order = list(df.columns)
-            return render_template('resultset.html', report_title = f"Max & Min daily changes per stock", user=username, data=df.to_dict('records'), keys_order = keys_order, stock_names = stock_names)
+            return render_template('resultset.html', report_title = f"Max & Min daily changes (in percent) per stock", user=username, data=df.to_dict('records'), keys_order = keys_order, stock_names = stock_names)
 
     except ProgrammingError as e:
         error_message = str(e)
