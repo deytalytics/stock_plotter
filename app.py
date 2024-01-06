@@ -4,7 +4,7 @@ from flask import Flask, request, session, render_template, redirect, make_respo
 from authlib.integrations.flask_client import OAuth
 from functions import *
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy import text, and_
+from sqlalchemy import text, and_, MetaData, Table, select
 
 
 def create_app():
@@ -119,7 +119,7 @@ def cumulative():
 
                         # Construct the new dictionary and append it to the list
                         data.append({
-                            'stock symbol': stock_symbol,
+                            'stock_symbol': stock_symbol,
                             'stock': stocks[stock_symbol]['stock_name'],
                             'industry': stocks[stock_symbol]['industry_name'],
                             'sort_value': 1000 * (percentage_increase / 100),
@@ -169,8 +169,8 @@ def positiveyears():
                     # Construct the new dictionary and append it to the list
                     data.append({
                         'stock_symbol': stock_symbol,
-                        'stock_name': stocks[stock_symbol]['stock_name'],
-                        'industry_name': stocks[stock_symbol]['industry_name'],
+                        'stock': stocks[stock_symbol]['stock_name'],
+                        'industry': stocks[stock_symbol]['industry_name'],
                         'positive_years': positive_years
                     })
 
