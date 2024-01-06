@@ -60,6 +60,10 @@
     background-color: #f1f1f1;
 }
 
+    .negative {
+        color: red;
+    }
+
     </style>
     <script>
 var lastSortedColumn = null;
@@ -223,7 +227,7 @@ function sortYoYTable(n, initialSort = false) {
                                             </a>
                         </td>
                         {% for value in performance %}
-                            <td>{{ value | int }}</td>
+                            <td class="{{ 'negative' if value|int < 0 }}">{{ value | int }}%</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -258,7 +262,7 @@ function sortYoYTable(n, initialSort = false) {
                                             </a>
                         </td>
                         {% for value in performance %}
-                            <td>{{ value | int }}</td>
+                            <td class="{{ 'negative' if value|int < 0 }}">{{ value | int }}%</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}

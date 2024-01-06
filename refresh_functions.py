@@ -139,26 +139,28 @@ def save_min_max_changes(engine):
         connection.execute(text("truncate table stockplot.min_max_changes"))
         query = f"""
         with daily_change as (
-        select stock_symbol, reported_date, close,
-        lag(close,1,0) over (partition by stock_symbol order by reported_date) as prev_close
+        select stock_symbol, reported_date, adj_close,
+        lag(adj_close,1,0) over (partition by stock_symbol order by reported_date) as prev_adj_close, volume
         from stockplot.stock_price_history),
         pct_daily_change as (
-        select stock_symbol, reported_date, close, prev_close,
-        100*(close - prev_close)/prev_close as change
+        select stock_symbol, reported_date, adj_close, prev_adj_close,
+        100*(adj_close - prev_adj_close)/prev_adj_close as change, volume
         from daily_change
-        where prev_close<> 0)
+        where prev_adj_close<> 0)
         insert into stockplot.min_max_changes
-        select stock_symbol, reported_date, close, prev_close, change as min_max_daily_change 
+        select stock_symbol, reported_date, adj_close, prev_adj_close, change as min_max_daily_change, volume 
         from pct_daily_change
         where (stock_symbol, change) in (
             select stock_symbol, max(change) 
             from pct_daily_change
-            where reported_date <> '2022-06-15'
+            where volume <> 0
+			and reported_date <> '2022-06-15'
             group by stock_symbol)
         or (stock_symbol, change) in (
-            select stock_symbol, min(change) 
+            select stock_symbol, min(change)
             from pct_daily_change
-            where reported_date <> '2022-06-14'
+            where volume <> 0
+			and reported_date <> '2022-06-14'
             group by stock_symbol)
         """
         connection.execute(text(query))
