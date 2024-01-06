@@ -14,6 +14,15 @@
             }
             updateCumulativeLink();
 
+            var select = document.getElementById("industryyearsSelect");
+            for(var i = 1; i <= 25; i++) {
+                var option = document.createElement("option");
+                option.value = i;
+                option.text = i;
+                select.appendChild(option);
+            }
+            updateIndustryLink();
+
             var select = document.getElementById("positiveyearsSelect");
             for(var i = 1; i <= 25; i++) {
                 var option = document.createElement("option");
@@ -29,6 +38,12 @@
             var years = document.getElementById("cumulativeyearsSelect").value;
             var link = document.getElementById("cumulativeLink");
             link.href = "/cumulative?years=" + years;
+        }
+
+        function updateIndustryLink() {
+            var years = document.getElementById("industryyearsSelect").value;
+            var link = document.getElementById("industryLink");
+            link.href = "/best_industries?years=" + years;
         }
 
         function updatePositiveYearsLink() {
@@ -50,6 +65,14 @@
                 </select>
                 <a id="cumulativeLink" href="/cumulative?years=10">years ago, how much would it be worth today (excl dividends)?</a>
                 <br><small class="text-muted">This is really a past popularity report. The past unfortunately does not influence the future, and the largest daily losses report shows that very popular stocks can fall dramatically. Note: Stocks only appear in list if they existed x years ago</small>
+            </li>
+            <li class="list-group-item">
+                Which industry sectors have performed the best in the last
+                <select id="industryyearsSelect" onchange="updateIndustryLink()">
+                    <!-- Options will be added here by JavaScript -->
+                </select>
+                <a id="industryLink" href="/best_industries?years=10">years?</a>
+                <br><small class="text-muted">Averages returns per industry sector over past x years for all stocks</small>
             </li>
             <li class="list-group-item">
                 In past

@@ -235,6 +235,44 @@ def stock_peaks():
         error_message = str(e)
         return error_message
 
+@app.route('/best_industries', methods=['GET'])
+def best_industries():
+    username = get_username(session)
+    # Get the 'years' parameter from the request
+    years = int(request.args.get('years'))
+    try:
+        engine = connect_db()
+        # your SQL query
+        query = f"""
+        SELECT industry_name, cast(avg(cumulative_return) as integer) as average_cumulative_return
+        from stockplot.cumulative_returns cr
+        join stockplot.market_stocks ms on ms.stock_symbol = cr.stock_symbol
+        where year <= {years}
+        group by industry_name
+        order by 2 desc
+        """
+
+        # load the query result into a pandas DataFrame
+        df = pd.read_sql_query(query, engine)
+
+        df['average_cumulative_return'] = df['average_cumulative_return'].astype(str) + '%'
+
+        # Export the result to CSV or HTML format
+        export_format = 'html'
+
+        if export_format == 'csv':
+            response = make_response(df.to_csv(index=False))
+            response.headers['Content-Disposition'] = 'attachment; filename=result.csv'
+            response.headers['Content-Type'] = 'text/csv'
+            return response
+        elif export_format == 'html':
+            keys_order = list(df.columns)
+            return render_template('resultset.html', report_title = f"Average industry cumulative percentage return over past {years} year(s)", user=username, data=df.to_dict('records'), keys_order = keys_order, stock_names = stock_names)
+
+    except ProgrammingError as e:
+        error_message = str(e)
+        return error_message
+
 @app.route('/save_query', methods=['POST'])
 def save_query():
     data = request.get_json()
