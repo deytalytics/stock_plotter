@@ -119,14 +119,19 @@ def cumulative():
 
                         # Construct the new dictionary and append it to the list
                         data.append({
-                            'stock_symbol': stock_symbol,
-                            'stock_name': stocks[stock_symbol]['stock_name'],
-                            'industry_name': stocks[stock_symbol]['industry_name'],
-                            'percentage_increase': percentage_increase
+                            'stock symbol': stock_symbol,
+                            'stock': stocks[stock_symbol]['stock_name'],
+                            'industry': stocks[stock_symbol]['industry_name'],
+                            'sort_value': 1000 * (percentage_increase / 100),
+                            '$1000 now worth': "${:,.2f}".format(1000 * (1+(percentage_increase / 100)))
                         })
 
         # Sort the data list by 'percentage_increase' in descending order
-        data = sorted(data, key=lambda x: x['percentage_increase'], reverse=True)
+        data = sorted(data, key=lambda x: x['sort_value'], reverse=True)
+
+        # Drop 'sort_value' from each dictionary in the list
+        for item in data:
+            item.pop('sort_value', None)
 
         # Export the result to CSV or HTML format
         export_format = 'html'
@@ -301,7 +306,7 @@ def daily_refresh():
 
 @app.route('/refresh_returns')
 def refresh_returns():
-    global stock_price_history, cumulative_returns, yoy_returns
+    global stock_price_history, cumulative_returns, yoy_returns, min_max_changes, stock_highs
     engine = connect_db()
     user_stocks, stock_price_history, cumulative_returns, yoy_returns, min_max_changes, stock_highs = load_stock_data(engine)
     return "Stock price history refreshed from database and precalculated returns recalculated "

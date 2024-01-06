@@ -83,7 +83,7 @@ def precalculate_returns(market_stocks, stock_price_history, time_periods):
 
                 if len(period_data) > 1:  # Check if both latest and prior data are available
                     percentage_return = round(
-                        (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[0] * 100,
+                        (period_data['adj_close'].iloc[-1] - period_data['adj_close'].iloc[0]) / period_data['adj_close'].iloc[0] * 100,
                         2)
                     stock_cumulative_returns.append(percentage_return)
                 else:
@@ -102,7 +102,7 @@ def precalculate_returns(market_stocks, stock_price_history, time_periods):
 
                     if len(period_data) > 1:  # Check if both prior_data_yoy and prior data are available
                         percentage_return = round(
-                            (period_data['close'].iloc[-1] - period_data['close'].iloc[0]) / period_data['close'].iloc[
+                            (period_data['adj_close'].iloc[-1] - period_data['adj_close'].iloc[0]) / period_data['adj_close'].iloc[
                                 0] * 100,
                             2)
                         stock_yoy_returns.append(percentage_return)

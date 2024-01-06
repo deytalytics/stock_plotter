@@ -54,6 +54,14 @@ var columns = keys_order.map(function(key) {
             return '<a href="https://finance.yahoo.com/quote/' + value + '" title="' + tooltip + '">' + value + '</a>';
         };
     }
+
+    if (key === "$1000 now worth") {
+        column.sorter = function(a, b) {
+            var a_num = Number(a.replace(/[^0-9.-]+/g,""));
+            var b_num = Number(b.replace(/[^0-9.-]+/g,""));
+            return a_num - b_num;
+        };
+    }
     return column;
 });
 
