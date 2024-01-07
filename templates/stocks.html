@@ -65,96 +65,7 @@
     }
 
     </style>
-    <script>
-var lastSortedColumn = null;
-var lastSortedDirection = null;
 
-function sortTable(n, initialSort = false) {
-    var table, rows, switching, i, x, y, shouldSwitch;
-    var dir = initialSort ? "desc" : (lastSortedColumn === n && lastSortedDirection === "desc") ? "asc" : "desc";
-    table = document.getElementById("myTable");
-    switching = true;
-    while (switching) {
-        switching = false;
-        rows = table.rows;
-        for (i = 1; i < (rows.length - 1); i++) {
-            shouldSwitch = false;
-            x = rows[i].getElementsByTagName("TD")[n];
-            y = rows[i + 1].getElementsByTagName("TD")[n];
-            if (dir == "asc") {
-                if (Number(x.innerHTML) > Number(y.innerHTML)) {
-                    shouldSwitch = true;
-                    break;
-                }
-            } else if (dir == "desc") {
-                if (Number(x.innerHTML) < Number(y.innerHTML)) {
-                    shouldSwitch = true;
-                    break;
-                }
-            }
-        }
-        if (shouldSwitch) {
-            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-            switching = true;
-        }
-    }
-    /* Update the direction of the sorting arrow */
-    for (i = 0; i < table.rows[0].cells.length; i++) {
-        table.rows[0].cells[i].classList.remove("asc", "desc");
-    }
-    if (dir == "asc") {
-        table.rows[0].cells[n].classList.add("asc");
-    } else {
-        table.rows[0].cells[n].classList.add("desc");
-    }
-    lastSortedColumn = n;
-    lastSortedDirection = dir;
-}
-
-function sortYoYTable(n, initialSort = false) {
-    var table, rows, switching, i, x, y, shouldSwitch;
-    var dir = initialSort ? "desc" : (lastSortedColumn === n && lastSortedDirection === "desc") ? "asc" : "desc";
-    table = document.getElementById("myYoYTable");
-    switching = true;
-    while (switching) {
-        switching = false;
-        rows = table.rows;
-        for (i = 1; i < (rows.length - 1); i++) {
-            shouldSwitch = false;
-            x = rows[i].getElementsByTagName("TD")[n];
-            y = rows[i + 1].getElementsByTagName("TD")[n];
-            if (dir == "asc") {
-                if (Number(x.innerHTML) > Number(y.innerHTML)) {
-                    shouldSwitch = true;
-                    break;
-                }
-            } else if (dir == "desc") {
-                if (Number(x.innerHTML) < Number(y.innerHTML)) {
-                    shouldSwitch = true;
-                    break;
-                }
-            }
-        }
-        if (shouldSwitch) {
-            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-            switching = true;
-        }
-    }
-    /* Update the direction of the sorting arrow */
-    for (i = 0; i < table.rows[0].cells.length; i++) {
-        table.rows[0].cells[i].classList.remove("asc", "desc");
-    }
-    if (dir == "asc") {
-        table.rows[0].cells[n].classList.add("asc");
-    } else {
-        table.rows[0].cells[n].classList.add("desc");
-    }
-    lastSortedColumn = n;
-    lastSortedDirection = dir;
-}
-
-
-    </script>
 </head>
 <body>
     {% include 'header.html' %}
@@ -207,7 +118,7 @@ function sortYoYTable(n, initialSort = false) {
                 <tr>
                     <th class="fixed">Stock Symbol</th>
                     {% for year in range(1,26) %}
-                        <th onclick="sortTable({{ loop.index }})" class="sortable">{{ year }}yr</th>
+                        <th onclick="sortTable({{ loop.index }}, 'myTable')" class="sortable">{{ year }}yr</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -242,7 +153,7 @@ function sortYoYTable(n, initialSort = false) {
                 <tr>
                     <th class="fixed">Stock Symbol</th>
                     {% for year in range(1,26) %}
-                        <th onclick="sortYoYTable({{ loop.index }})" class="sortable">{{ year }}yr</th>
+                        <th onclick="sortTable({{ loop.index }}, 'myYoYTable')" class="sortable">{{ year }}yr</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -262,7 +173,7 @@ function sortYoYTable(n, initialSort = false) {
                                             </a>
                         </td>
                         {% for value in performance %}
-                            <td class="{{ 'negative' if value|int < 0 }}">{{ value | int }}%</td>
+                            <td class="{{ 'negative' if value|int < 0 }}">{{ value | int }}</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -272,6 +183,53 @@ function sortYoYTable(n, initialSort = false) {
     </details>
 
     <script>
+
+    var lastSortedColumn = null;
+var lastSortedDirection = null;
+
+function sortTable(n, tableName, initialSort = false) {
+    var table, rows, switching, i, x, y, shouldSwitch;
+    var dir = initialSort ? "desc" : (lastSortedColumn === n && lastSortedDirection === "desc") ? "asc" : "desc";
+    table = document.getElementById(tableName);
+    switching = true;
+    while (switching) {
+        switching = false;
+        rows = table.rows;
+        for (i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n];
+            y = rows[i + 1].getElementsByTagName("TD")[n];
+            var xVal = Number(x.innerHTML.replace('%', ''));
+            var yVal = Number(y.innerHTML.replace('%', ''));
+            if (dir == "asc") {
+                if (xVal > yVal) {
+                    shouldSwitch = true;
+                    break;
+                }
+            } else if (dir == "desc") {
+                if (xVal < yVal) {
+                    shouldSwitch = true;
+                    break;
+                }
+            }
+        }
+        if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+        }
+    }
+    /* Update the direction of the sorting arrow */
+    for (i = 0; i < table.rows[0].cells.length; i++) {
+        table.rows[0].cells[i].classList.remove("asc", "desc");
+    }
+    if (dir == "asc") {
+        table.rows[0].cells[n].classList.add("asc");
+    } else {
+        table.rows[0].cells[n].classList.add("desc");
+    }
+    lastSortedColumn = n;
+    lastSortedDirection = dir;
+}
         // Store the stocks in JavaScript variables
         var ftse100Stocks = {{ ftse100_stocks | tojson }};
         var daxStocks = {{ dax_stocks | tojson }};
@@ -338,9 +296,9 @@ function loadStocks(market, selectedStock) {
         });
 
         /* sort the cumulative return Table on Year 10 performance */
-        sortTable(10,true)
+        sortTable(10,'myTable',true)
         /* sort the YoY return Table on Year 1 performance */
-        sortYoYTable(1,true)
+        sortTable(1,'myYoYTable',true)
 
         var coll = document.getElementsByClassName("collapsible");
         var i;
@@ -359,6 +317,5 @@ function loadStocks(market, selectedStock) {
             });
         }
     </script>
-
 </body>
 </html>
